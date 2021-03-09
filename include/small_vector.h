@@ -8,7 +8,7 @@
 #include <optional>
 
 namespace Ubpa {
-    template <class T, std::size_t N, class Allocator = std::allocator<T>>
+    template <typename T, std::size_t N, typename Allocator = std::allocator<T>>
     class small_vector {
         using stack_type = fixed_vector<T, N>;
         using heap_type = std::vector<T, Allocator>;
@@ -411,15 +411,44 @@ namespace Ubpa {
             assert(stack_.empty() && heap_->size() >= N);
             static_assert(sizeof...(Ns) == N);
             heap_type& heap_ref = *heap_;
-            new(&stack_)fixed_vector<T, N>{ std::move(heap_ref[Ns])... };
+            new(&stack_)stack_type{ std::move(heap_ref[Ns])... };
         }
         void re_ctor_stack_from_heap() {
             re_ctor_stack_from_heap(std::make_index_sequence<N>{});
         }
 
-        fixed_vector<T, N> stack_;
+        stack_type stack_;
         std::optional<heap_type> heap_;
         size_type size_;
     };
 
+    template<typename T, std::size_t N, typename Allocator>
+    constexpr bool operator==(const small_vector<T, N, Allocator>& lhs, const small_vector<T, N, Allocator>& rhs) {
+        return lhs.size() == rhs.size() && std::equal(lhs.begin(), lhs.end(), rhs.begin());
+    }
+
+    template<typename T, std::size_t N, typename Allocator>
+    constexpr bool operator<(const small_vector<T, N, Allocator>& lhs, const small_vector<T, N, Allocator>& rhs) {
+        return std::lexicographical_compare(lhs.begin(), lhs.end(), rhs.begin(), rhs.end());
+    }
+
+    template<typename T, std::size_t N, typename Allocator>
+    constexpr bool operator!=(const small_vector<T, N, Allocator>& lhs, const small_vector<T, N, Allocator>& rhs) {
+        return !(lhs == rhs);
+    }
+
+    template<typename T, std::size_t N, typename Allocator>
+    constexpr bool operator>(const small_vector<T, N, Allocator>& lhs, const small_vector<T, N, Allocator>& rhs) {
+        return rhs < lhs;
+    }
+
+    template<typename T, std::size_t N, typename Allocator>
+    constexpr bool operator<=(const small_vector<T, N, Allocator>& lhs, const small_vector<T, N, Allocator>& rhs) {
+        return !(rhs < lhs);
+    }
+
+    template<typename T, std::size_t N, typename Allocator>
+    constexpr bool operator>=(const small_vector<T, N, Allocator>& lhs, const small_vector<T, N, Allocator>& rhs) {
+        return !(lhs < rhs);
+    }
 }

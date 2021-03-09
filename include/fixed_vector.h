@@ -470,6 +470,35 @@ namespace Ubpa {
         size_type size_;
     };
 
+    template<typename T, std::size_t N>
+    constexpr bool operator==(const fixed_vector<T, N>& lhs, const fixed_vector<T, N>& rhs) {
+        return lhs.size() == rhs.size() && std::equal(lhs.begin(), lhs.end(), rhs.begin());
+    }
+
+    template<typename T, std::size_t N>
+    constexpr bool operator<(const fixed_vector<T, N>& lhs, const fixed_vector<T, N>& rhs) {
+        return std::lexicographical_compare(lhs.begin(), lhs.end(), rhs.begin(), rhs.end());
+    }
+
+    template<typename T, std::size_t N>
+    constexpr bool operator!=(const fixed_vector<T, N>& lhs, const fixed_vector<T, N>& rhs) {
+        return !(lhs == rhs);
+    }
+
+    template<typename T, std::size_t N>
+    constexpr bool operator>(const fixed_vector<T, N>& lhs, const fixed_vector<T, N>& rhs) {
+        return rhs < lhs;
+    }
+
+    template<typename T, std::size_t N>
+    constexpr bool operator<=(const fixed_vector<T, N>& lhs, const fixed_vector<T, N>& rhs) {
+        return !(rhs < lhs);
+    }
+
+    template<typename T, std::size_t N>
+    constexpr bool operator>=(const fixed_vector<T, N>& lhs, const fixed_vector<T, N>& rhs) {
+        return !(lhs < rhs);
+    }
 }
 
 #ifdef _MSC_VER
