@@ -1,5 +1,4 @@
 #pragma once
-#pragma once
 
 #include "fixed_vector.h"
 
@@ -24,6 +23,7 @@ namespace Ubpa {
         using allocator_type = Allocator;
         using pointer = T*;
         using const_pointer = const T*;
+        // TODO : improve iterator
         using iterator = T*;
         using const_iterator = const T*;
         using reverse_iterator = std::reverse_iterator<iterator>;
@@ -43,7 +43,7 @@ namespace Ubpa {
                 heap_ = heap_type(count);
         }
 
-        explicit small_vector(size_type count, const value_type& value) :
+        small_vector(size_type count, const value_type& value) :
             stack_(count <= N ? count : 0, value),
             size_{ count }
         {
@@ -51,7 +51,7 @@ namespace Ubpa {
                 heap_ = heap_type(count, value);
         }
 
-        explicit small_vector(size_type count,
+        small_vector(size_type count,
             const value_type& value,
             const allocator_type& alloc) :
             stack_(count <= N ? 0 : count, value),
@@ -71,7 +71,6 @@ namespace Ubpa {
             stack_{ other.stack_ },
             heap_{ other.heap_.has_value() ? heap_type{ std::move(*other.heap_), alloc } : heap_type{ alloc } },
             size_{ other.size_ } {}
-
 
         small_vector(std::initializer_list<T> initlist) :
             stack_{ initlist.size() <= N ? initlist : std::initializer_list<T>{} },
@@ -400,7 +399,7 @@ namespace Ubpa {
         }
 
         void swap(small_vector& other) noexcept {
-            std::swap(stack_, stack_);
+            std::swap(stack_, other.stack_);
             std::swap(heap_, other.heap_);
             std::swap(size_, other.size_);
         };

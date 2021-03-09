@@ -1,5 +1,4 @@
 #pragma once
-#pragma once
 
 #include <cassert>
 #include <stdexcept>
@@ -42,7 +41,6 @@ namespace Ubpa {
             for (value_type& elem : *this)
                 new(&elem)value_type{};
         }
-
 
         constexpr fixed_vector(size_type count, const value_type& value) : size_{ count } {
             assert(count <= N);
