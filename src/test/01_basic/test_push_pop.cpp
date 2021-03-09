@@ -39,7 +39,7 @@ TEST_CASE("Popping out of a small vector" * test_suite("pop_back")) {
   REQUIRE(a[3] == 4);
   
   // pop back more
-  while(i < 10) {
+  while(i < 9) {
     a.pop_back();
     i += 1;
   }
