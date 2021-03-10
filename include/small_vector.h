@@ -422,32 +422,32 @@ namespace Ubpa {
     };
 
     template<typename T, std::size_t N, typename Allocator>
-    constexpr bool operator==(const small_vector<T, N, Allocator>& lhs, const small_vector<T, N, Allocator>& rhs) {
+    bool operator==(const small_vector<T, N, Allocator>& lhs, const small_vector<T, N, Allocator>& rhs) {
         return lhs.size() == rhs.size() && std::equal(lhs.begin(), lhs.end(), rhs.begin());
     }
 
     template<typename T, std::size_t N, typename Allocator>
-    constexpr bool operator<(const small_vector<T, N, Allocator>& lhs, const small_vector<T, N, Allocator>& rhs) {
+    bool operator<(const small_vector<T, N, Allocator>& lhs, const small_vector<T, N, Allocator>& rhs) {
         return std::lexicographical_compare(lhs.begin(), lhs.end(), rhs.begin(), rhs.end());
     }
 
     template<typename T, std::size_t N, typename Allocator>
-    constexpr bool operator!=(const small_vector<T, N, Allocator>& lhs, const small_vector<T, N, Allocator>& rhs) {
+    bool operator!=(const small_vector<T, N, Allocator>& lhs, const small_vector<T, N, Allocator>& rhs) {
         return !(lhs == rhs);
     }
 
     template<typename T, std::size_t N, typename Allocator>
-    constexpr bool operator>(const small_vector<T, N, Allocator>& lhs, const small_vector<T, N, Allocator>& rhs) {
+    bool operator>(const small_vector<T, N, Allocator>& lhs, const small_vector<T, N, Allocator>& rhs) {
         return rhs < lhs;
     }
 
     template<typename T, std::size_t N, typename Allocator>
-    constexpr bool operator<=(const small_vector<T, N, Allocator>& lhs, const small_vector<T, N, Allocator>& rhs) {
+    bool operator<=(const small_vector<T, N, Allocator>& lhs, const small_vector<T, N, Allocator>& rhs) {
         return !(rhs < lhs);
     }
 
     template<typename T, std::size_t N, typename Allocator>
-    constexpr bool operator>=(const small_vector<T, N, Allocator>& lhs, const small_vector<T, N, Allocator>& rhs) {
+    bool operator>=(const small_vector<T, N, Allocator>& lhs, const small_vector<T, N, Allocator>& rhs) {
         return !(lhs < rhs);
     }
 }
