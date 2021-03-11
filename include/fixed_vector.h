@@ -3,14 +3,24 @@
 #include <cassert>
 #include <stdexcept>
 #include <algorithm>
+#include <memory>
 
 #ifdef _MSC_VER
 #pragma warning( push )
 #pragma warning( disable: 26495 )
 #endif
 
-namespace Ubpa {
+namespace Ubpa::details {
+    template <std::size_t N>
+    using fixed_vector_size_type
+        = std::conditional_t<(N < std::numeric_limits<uint8_t>::max()), std::uint8_t,
+        std::conditional_t<(N < std::numeric_limits<uint16_t>::max()), std::uint16_t,
+        std::conditional_t<(N < std::numeric_limits<uint32_t>::max()), std::uint32_t,
+        std::conditional_t<(N < std::numeric_limits<uint64_t>::max()), std::uint64_t,
+        std::size_t>>>>;
+}
 
+namespace Ubpa {
     template <class T, std::size_t N>
     class fixed_vector {
     public:
@@ -19,13 +29,12 @@ namespace Ubpa {
         //////////////////
 
         using value_type = T;
-        using size_type = std::size_t;
+        using size_type = details::fixed_vector_size_type<N>;
         using difference_type = std::ptrdiff_t;
         using reference = value_type&;
         using const_reference = const value_type&;
         using pointer = T*;
         using const_pointer = const T*;
-        // TODO : improve iterator
         using iterator = T*;
         using const_iterator = const T*;
         using reverse_iterator = std::reverse_iterator<iterator>;
@@ -38,90 +47,44 @@ namespace Ubpa {
         fixed_vector() noexcept : size_{ 0 } {}
 
         explicit fixed_vector(size_type count) : size_{ count } {
-            assert(count <= N);
-            for (value_type& elem : *this)
-                new(&elem)value_type{};
+            assert(count <= max_size());
+            std::uninitialized_value_construct(begin(), end());
         }
 
         fixed_vector(size_type count, const value_type& value) : size_{ count } {
-            assert(count <= N);
-            for (value_type& elem : *this)
-                new(&elem)value_type{ value };
+            assert(count <= max_size());
+            std::uninitialized_fill(begin(), end(), value);
         }
 
-        fixed_vector(const fixed_vector& other) : size_(other.size_) {
-            if constexpr (std::is_trivially_copy_constructible_v<value_type>)
-                std::memcpy(&storage_, &other.storage_, size_ * sizeof(value_type));
-            else {
-                pointer cursor = data();
-                for (const value_type& elem : other)
-                    new(cursor++)value_type{ elem };
-            }
+        fixed_vector(const fixed_vector& other) : size_{ other.size_ } {
+            std::uninitialized_copy(other.begin(), other.end(), begin());
         }
 
-        fixed_vector(fixed_vector&& other) noexcept : size_(other.size_) {
-            if constexpr (std::is_trivially_move_constructible_v<value_type>)
-                std::memcpy(&storage_, &other.storage_, size_ * sizeof(value_type));
-            else {
-                pointer cursor = data();
-                for (value_type& elem : other)
-                    new(cursor++)value_type{ std::move(elem) };
-            }
+        fixed_vector(fixed_vector&& other) noexcept : size_{ other.size_ } {
+            std::uninitialized_move(other.begin(), other.end(), begin());
             other.clear();
         }
 
-        fixed_vector(std::initializer_list<value_type> initlist) : size_{ initlist.size() } {
-            assert(initlist.size() <= N);
-            if constexpr (std::is_trivially_move_constructible_v<value_type>)
-                std::memcpy(&storage_, initlist.begin(), size_ * sizeof(value_type));
-            else {
-                pointer cursor = data();
-                for (const value_type& elem : initlist)
-                    new(cursor++)value_type{ elem };
-            }
+        fixed_vector(std::initializer_list<value_type> initlist) : size_{ static_cast<size_type>(initlist.size()) } {
+            assert(initlist.size() <= max_size());
+            std::uninitialized_copy(initlist.begin(), initlist.end(), begin());
         }
 
-        ~fixed_vector() {
-            if constexpr (!std::is_trivially_destructible_v<T>) {
-                for (value_type& elem : *this)
-                    elem.~value_type();
-            }
-        }
+        ~fixed_vector() { std::destroy(begin(), end()); }
 
         fixed_vector& operator=(const fixed_vector& rhs) {
             if (this != &rhs) {
                 if (size_ > rhs.size_) {
-                    if constexpr (!std::is_trivially_destructible_v<T>) {
-                        pointer last = data() + size_;
-                        for (pointer cursor = data() + rhs.size_; cursor != last; ++cursor)
-                            cursor->~value_type();
-                    }
-                    std::copy(rhs.data(), rhs.data() + rhs.size_, data());
+                    std::destroy(begin() + rhs.size_, end());
+                    std::copy(rhs.begin(), rhs.end(), begin());
                 }
                 else {
-                    if constexpr (std::is_trivially_copy_assignable_v<value_type>) {
-                        if constexpr (std::is_trivially_copy_constructible_v<value_type>)
-                            std::memcpy(&storage_, &rhs.storage_, rhs.size_ * sizeof(value_type));
-                        else { // copy assignment + copy ctor
-                            const_pointer copy_ctor_cursor = rhs.data() + size_;
-                            std::copy(rhs.data(), copy_ctor_cursor, data());
-
-                            pointer last = data() + rhs.size_;
-                            for (pointer cursor = data() + size_; cursor != last; ++cursor)
-                                new(cursor) value_type{ *copy_ctor_cursor++ };
-                        }
+                    if constexpr (std::is_trivially_copy_assignable_v<value_type> && std::is_trivially_copy_constructible_v<value_type>) {
+                        std::memcpy(&storage_, &rhs.storage_, rhs.size_ * sizeof(value_type));
                     }
                     else {
-                        const_pointer copy_ctor_cursor = rhs.data() + size_;
-                        std::copy(rhs.data(), copy_ctor_cursor, data());
-
-                        if constexpr (std::is_trivially_copy_constructible_v<value_type>)
-                            std::memcpy(data() + size_, rhs.data() + size_, (rhs.size_ - size_) * sizeof(value_type));
-                        else {
-                            pointer last = data() + rhs.size_;
-                            for (pointer cursor = data() + size_; cursor != last; ++cursor)
-                                new(cursor)value_type{ *copy_ctor_cursor++ };
-                        }
+                        std::copy(rhs.begin(), rhs.begin() + size_, begin());
+                        std::uninitialized_copy(rhs.begin() + size_, rhs.end(), end());
                     }
                 }
                 size_ = rhs.size_;
@@ -132,42 +95,16 @@ namespace Ubpa {
         fixed_vector& operator=(fixed_vector&& rhs) noexcept {
             if (this != &rhs) {
                 if (size_ > rhs.size_) {
-                    if constexpr (!std::is_trivially_destructible_v<T>) {
-                        pointer last = data() + size_;
-                        for (pointer cursor = data() + rhs.size_; cursor != last; ++cursor)
-                            cursor->~value_type();
-                    }
-                    if constexpr (std::is_trivially_move_assignable_v<value_type>)
-                        std::memcpy(&storage_, &rhs.storage_, rhs.size_ * sizeof(value_type));
-                    else {
-                        pointer cursor = data();
-                        for (value_type& elem : rhs)
-                            *cursor = std::move(elem);
-                    }
+                    std::destroy(begin() + rhs.size_, end());
+                    std::move(rhs.begin(), rhs.end(), begin());
                 }
                 else {
-                    if constexpr (std::is_trivially_move_assignable_v<value_type>) {
-                        if constexpr (std::is_trivially_move_constructible_v<value_type>)
-                            std::memcpy(&storage_, &rhs.storage_, rhs.size_ * sizeof(value_type));
-                        else { // move assignment + move ctor
-                            std::memcpy(&storage_, &rhs.storage_, size_ * sizeof(value_type));
-
-                            pointer last = data() + rhs.size_;
-                            for (pointer cursor = data() + size_, rhs_cursor = rhs.data() + size_; cursor != last; ++cursor, ++rhs_cursor)
-                                new(cursor) value_type{ std::move(*rhs_cursor) };
-                        }
+                    if constexpr (std::is_trivially_move_assignable_v<value_type> && std::is_trivially_move_constructible_v<value_type>) {
+                        std::memcpy(&storage_, &rhs.storage_, rhs.size_ * sizeof(value_type));
                     }
                     else {
-                        pointer move_ctor_cursor = rhs.data() + size_;
-                        std::move(rhs.data(), move_ctor_cursor, data());
-
-                        if constexpr (std::is_trivially_move_constructible_v<value_type>)
-                            std::memcpy(data() + size_, rhs.data() + size_, (rhs.size_ - size_) * sizeof(value_type));
-                        else {
-                            pointer last = data() + rhs.size_;
-                            for (pointer cursor = data() + size_; cursor != last; ++cursor)
-                                new(cursor)value_type{ std::move(*move_ctor_cursor++) };
-                        }
+                        std::copy(rhs.begin(), rhs.begin() + size_, begin());
+                        std::uninitialized_move(rhs.begin() + size_, rhs.end(), end());
                     }
                 }
                 size_ = rhs.size_;
@@ -177,45 +114,19 @@ namespace Ubpa {
         }
 
         fixed_vector& operator=(std::initializer_list<value_type> rhs) {
-            assert(rhs.size() <= N);
-            const std::size_t rhs_size = rhs.size();
+            assert(rhs.size() <= max_size());
+            const size_type rhs_size = static_cast<size_type>(rhs.size());
             if (size_ > rhs_size) {
-                if constexpr (!std::is_trivially_destructible_v<T>) {
-                    pointer last = data() + size_;
-                    for (pointer cursor = data() + rhs_size; cursor != last; ++cursor)
-                        cursor->~value_type();
-                }
-                if constexpr (std::is_trivially_copy_assignable_v<value_type>)
-                    std::memcpy(&storage_, rhs.begin(), rhs_size * sizeof(value_type));
-                else {
-                    pointer cursor = data();
-                    for (const value_type& elem : rhs)
-                        *cursor = elem;
-                }
+                std::destroy(begin() + rhs_size, end());
+                std::copy(rhs.begin(), rhs.end(), begin());
             }
             else {
-                if constexpr (std::is_trivially_copy_assignable_v<value_type>) {
-                    if constexpr (std::is_trivially_copy_constructible_v<value_type>)
-                        std::memcpy(&storage_, rhs.begin(), rhs_size * sizeof(value_type));
-                    else { // copy assignment + copy ctor
-                        std::memcpy(&storage_, rhs.begin(), size_ * sizeof(value_type));
-
-                        pointer last = data() + rhs.size_;
-                        for (pointer cursor = data() + size_, rhs_cursor = rhs.begin() + size_; cursor != last; ++cursor, ++rhs_cursor)
-                            new(cursor) value_type{ *rhs_cursor };
-                    }
+                if constexpr (std::is_trivially_copy_assignable_v<value_type> && std::is_trivially_copy_constructible_v<value_type>) {
+                    std::memcpy(&storage_, rhs.begin(), rhs_size * sizeof(value_type));
                 }
                 else {
-                    const_pointer copy_ctor_cursor = rhs.begin() + size_;
-                    std::copy(rhs.data(), copy_ctor_cursor, data());
-
-                    if constexpr (std::is_trivially_copy_constructible_v<value_type>)
-                        std::memcpy(data() + size_, rhs.data() + size_, (rhs_size - size_) * sizeof(value_type));
-                    else {
-                        pointer last = data() + rhs_size;
-                        for (pointer cursor = data() + size_; cursor != last; ++cursor)
-                            new(cursor)value_type{ std::copy(*copy_ctor_cursor++) };
-                    }
+                    std::copy(rhs.begin(), rhs.begin() + size_, begin());
+                    std::uninitialized_copy(rhs.begin() + size_, rhs.end(), end());
                 }
             }
             size_ = rhs_size;
@@ -356,18 +267,10 @@ namespace Ubpa {
         void resize(size_type count) {
             assert(count < max_size());
 
-            if (count > size_) {
-                pointer last = data() + count;
-                for (pointer cursor = data() + size_; cursor != last; ++cursor)
-                    new(cursor) value_type{};
-            }
-            else {
-                if constexpr (!std::is_trivially_destructible_v<value_type>) {
-                    pointer last = data() + size_;
-                    for (pointer cursor = data() + count; cursor != last; ++cursor)
-                        cursor->~value_type();
-                }
-            }
+            if (count > size_)
+                std::uninitialized_default_construct(end(), begin() + count);
+            else
+                std::destroy(begin() + count, end());
 
             size_ = count;
         }
@@ -375,18 +278,10 @@ namespace Ubpa {
         void resize(size_type count, const T& value) {
             assert(count < max_size());
 
-            if (count > size_) {
-                pointer last = data() + count;
-                for (pointer cursor = data() + size_; cursor != last; ++cursor)
-                    new(cursor) value_type{value};
-            }
-            else {
-                if constexpr (!std::is_trivially_destructible_v<value_type>) {
-                    pointer last = data() + size_;
-                    for (pointer cursor = data() + count; cursor != last; ++cursor)
-                        cursor->~value_type();
-                }
-            }
+            if (count > size_)
+                std::uninitialized_fill(end(), begin() + count, value);
+            else
+                std::destroy(begin() + count, end());
 
             size_ = count;
         }

@@ -36,7 +36,7 @@ namespace Ubpa {
         small_vector() noexcept : size_{ 0 } {};
 
         explicit small_vector(size_type count) :
-            stack_(count <= N ? count : 0),
+            stack_(static_cast<typename stack_type::size_type>(count <= N ? count : 0)),
             size_{ count }
         {
             if (count > N)
@@ -44,7 +44,7 @@ namespace Ubpa {
         }
 
         small_vector(size_type count, const value_type& value) :
-            stack_(count <= N ? count : 0, value),
+            stack_(static_cast<typename stack_type::size_type>(count <= N ? count : 0), value),
             size_{ count }
         {
             if (count > N)
@@ -54,7 +54,7 @@ namespace Ubpa {
         small_vector(size_type count,
             const value_type& value,
             const allocator_type& alloc) :
-            stack_(count <= N ? 0 : count, value),
+            stack_(static_cast<typename stack_type::size_type>(count <= N ? 0 : count), value),
             heap_{ count <= N ? heap_type{ alloc } : heap_type{ count, value, alloc } },
             size_{ count } {}
 
@@ -116,28 +116,28 @@ namespace Ubpa {
 
         reference at(size_type pos) {
             if (size_ <= N)
-                return stack_.at(pos);
+                return stack_.at(static_cast<typename stack_type::size_type>(pos));
             else
                 return heap_->at(pos);
         }
 
         const_reference at(size_type pos) const {
             if (size_ <= N)
-                return stack_.at(pos);
+                return stack_.at(static_cast<typename stack_type::size_type>(pos));
             else
                 return heap_->at(pos);
         }
 
         reference operator[](size_type pos) noexcept {
             if (size_ <= N)
-                return stack_[pos];
+                return stack_[static_cast<typename stack_type::size_type>(pos)];
             else
                 return (*heap_)[pos];
         }
 
         const_reference operator[](size_type pos) const noexcept {
             if (size_ <= N)
-                return stack_[pos];
+                return stack_[static_cast<typename stack_type::size_type>(pos)];
             else
                 return (*heap_)[pos];
         }
@@ -355,7 +355,7 @@ namespace Ubpa {
                 }
                 else {
                     // all data already on stack
-                    stack_.resize(count);
+                    stack_.resize(static_cast<typename stack_type::size_type>(count));
                 }
             }
             else {
@@ -382,7 +382,7 @@ namespace Ubpa {
                 }
                 else {
                     // all data already on stack
-                    stack_.resize(count, value);
+                    stack_.resize(static_cast<typename stack_type::size_type>(count), value);
                 }
             }
             else {
