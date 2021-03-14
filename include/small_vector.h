@@ -23,7 +23,6 @@ namespace Ubpa {
         using allocator_type = Allocator;
         using pointer = T*;
         using const_pointer = const T*;
-        // TODO : improve iterator
         using iterator = T*;
         using const_iterator = const T*;
         using reverse_iterator = std::reverse_iterator<iterator>;
@@ -33,22 +32,28 @@ namespace Ubpa {
         // Member functions //
         //////////////////////
 
-        small_vector() noexcept : size_{ 0 } {};
+        small_vector() noexcept : first_{ stack_.begin() }, last_{ stack_.end() } {};
 
         explicit small_vector(size_type count) :
-            stack_(static_cast<typename stack_type::size_type>(count <= N ? count : 0)),
-            size_{ count }
+            stack_(static_cast<typename stack_type::size_type>(count <= N ? count : 0))
         {
-            if (count > N)
+            if (count > N) {
                 heap_ = heap_type(count);
+                set_range_to_heap();
+            }
+            else
+                set_range_to_stack();
         }
 
         small_vector(size_type count, const value_type& value) :
-            stack_(static_cast<typename stack_type::size_type>(count <= N ? count : 0), value),
-            size_{ count }
+            stack_(static_cast<typename stack_type::size_type>(count <= N ? count : 0), value)
         {
-            if (count > N)
+            if (count > N) {
                 heap_ = heap_type(count, value);
+                set_range_to_heap();
+            }
+            else
+                set_range_to_stack();
         }
 
         small_vector(size_type count,
@@ -56,39 +61,80 @@ namespace Ubpa {
             const allocator_type& alloc) :
             stack_(static_cast<typename stack_type::size_type>(count <= N ? 0 : count), value),
             heap_{ count <= N ? heap_type{ alloc } : heap_type{ count, value, alloc } },
-            size_{ count } {}
+            first_{ count <= N ? stack_.begin() : heap_->data() },
+            last_{ count <= N ? stack_.end() : heap_->data() + count }{}
 
-        small_vector(const small_vector& other) = default;
+        small_vector(const small_vector& other) :
+            stack_{other.stack_},
+            heap_{other.heap_},
+            first_{other.is_on_stack()?stack_.begin():heap_->data()},
+            last_{ other.is_on_stack() ? stack_.end() : heap_->data() + heap_->size() }{}
 
         small_vector(const small_vector& other, const allocator_type& alloc) :
             stack_{ other.stack_ },
             heap_{ other.heap_.has_value() ? heap_type{ *other.heap_, alloc } : heap_type{ alloc } },
-            size_{ other.size_ } {}
+            first_{ other.is_on_stack() ? stack_.begin() : heap_->data() },
+            last_{ other.is_on_stack() ? stack_.end() : heap_->data() + heap_->size() } {}
 
-        small_vector(small_vector&& other) noexcept = default;
+        small_vector(small_vector&& other) noexcept :
+            stack_{ std::move(other.stack_) },
+            heap_{ std::move(other.heap_) },
+            first_{ other.is_on_stack() ? stack_.begin() : heap_->data() },
+            last_{ other.is_on_stack() ? stack_.end() : heap_->data() + heap_->size() }
+        {
+            other.set_range_to_stack();
+        }
 
         small_vector(small_vector&& other, const allocator_type& alloc) noexcept :
-            stack_{ other.stack_ },
+            stack_{ std::move(other.stack_) },
             heap_{ other.heap_.has_value() ? heap_type{ std::move(*other.heap_), alloc } : heap_type{ alloc } },
-            size_{ other.size_ } {}
+            first_{ other.is_on_stack() ? stack_.begin() : heap_->data() },
+            last_{ other.is_on_stack() ? stack_.end() : heap_->data() + heap_->size() }
+        {
+            other.set_range_to_stack();
+        }
 
         small_vector(std::initializer_list<T> ilist) :
-            stack_{ ilist.size() <= N ? ilist : std::initializer_list<T>{} },
-            size_{ ilist.size() }
+            stack_{ ilist.size() <= N ? ilist : std::initializer_list<T>{} }
         {
-            if (ilist.size() > N)
+            if (ilist.size() > N) {
                 heap_ = heap_type{ ilist };
+                set_range_to_heap();
+            }
+            else
+                set_range_to_stack();
         }
 
         small_vector(std::initializer_list<T> ilist, const allocator_type& alloc) :
             stack_{ ilist.size() <= N ? ilist : std::initializer_list<T>{} },
             heap_{ ilist.size() <= N ? heap_type{ alloc } : heap_type{ ilist } },
-            size_{ ilist.size() }
-        {}
+            first_{ ilist.size() <= N ? stack_.begin() : heap_->data() },
+            last_{ ilist.size() <= N ? stack_.end() : heap_->data() + heap_->size() }{}
 
-        small_vector& operator=(const small_vector& rhs) = default;
+        small_vector& operator=(const small_vector& rhs) {
+            if (this != &rhs) {
+                stack_ = rhs.stack_;
+                heap_ = rhs.heap_;
+                if (rhs.is_on_stack())
+                    set_range_to_stack();
+                else
+                    set_range_to_heap();
+            }
+            return *this;
+        }
 
-        small_vector& operator=(small_vector&& rhs) noexcept = default;
+        small_vector& operator=(small_vector&& rhs) noexcept {
+            if (this != &rhs) {
+                stack_ = std::move(rhs.stack_);
+                heap_ = std::move(rhs.heap_);
+                if (rhs.is_on_stack())
+                    set_range_to_stack();
+                else
+                    set_range_to_heap();
+                rhs.set_range_to_stack();
+            }
+            return *this;
+        }
 
         small_vector& operator=(std::initializer_list<value_type> rhs) {
             if (rhs.size() <= N) {
@@ -96,6 +142,7 @@ namespace Ubpa {
                     heap_->clear();
 
                 stack_ = rhs;
+                set_range_to_stack();
             }
             else {
                 stack_.clear();
@@ -103,24 +150,27 @@ namespace Ubpa {
                     *heap_ = rhs;
                 else
                     heap_.emplace(rhs);
+                set_range_to_heap();
             }
+            return *this;
         }
 
         void assign(size_type count, const value_type& value) {
             if (count <= N) {
-                if (size_ > N)
+                if (!is_on_stack())
                     heap_->clear();
                 stack_.assign(static_cast<typename stack_type::size_type>(count), value);
+                set_range_to_stack();
             }
             else {
-                if (size_ <= N)
+                if (is_on_stack())
                     stack_.clear();
-                if (!heap_.has_value())
-                    heap_ = heap_type(count, value);
-                else
+                if (heap_.has_value())
                     heap_->assign(count, value);
+                else
+                    heap_ = heap_type(count, value);
+                set_range_to_heap();
             }
-            size_ = count;
         }
 
         template<class Iter> requires std::input_iterator<Iter>
@@ -141,123 +191,60 @@ namespace Ubpa {
         ///////////////////
 
         reference at(size_type pos) {
-            if (size_ <= N)
-                return stack_.at(static_cast<typename stack_type::size_type>(pos));
-            else
-                return heap_->at(pos);
+            if (pos >= size())
+                throw_out_of_range();
+            return first_[pos];
         }
 
         const_reference at(size_type pos) const {
-            if (size_ <= N)
-                return stack_.at(static_cast<typename stack_type::size_type>(pos));
-            else
-                return heap_->at(pos);
+            if (pos >= size())
+                throw_out_of_range();
+            return first_[pos];
         }
 
         reference operator[](size_type pos) noexcept {
-            if (size_ <= N)
-                return stack_[static_cast<typename stack_type::size_type>(pos)];
-            else
-                return (*heap_)[pos];
+            pointer p = first_ + pos;
+            assert(p < last_);
+            return *p;
         }
 
         const_reference operator[](size_type pos) const noexcept {
-            if (size_ <= N)
-                return stack_[static_cast<typename stack_type::size_type>(pos)];
-            else
-                return (*heap_)[pos];
+            const_pointer p = first_ + pos;
+            assert(p < last_);
+            return *p;
         }
 
-        reference front() noexcept {
-            if (size_ <= N)
-                return stack_.front();
-            else
-                return heap_->front();
-        }
-
-        const_reference front() const noexcept {
-            if (size_ <= N)
-                return stack_.front();
-            else
-                return heap_->front();
-        }
+        reference front() noexcept { return *begin(); }
+        const_reference front() const noexcept { return *begin(); }
 
         reference back() noexcept {
-            if (size_ <= N)
-                return stack_.back();
-            else
-                return heap_->back();
+            assert(!empty());
+            return *(end() - 1);
         }
 
         const_reference back() const noexcept {
-            if (size_ <= N)
-                return stack_.back();
-            else
-                return heap_->back();
+            assert(!empty());
+            return *(end() - 1);
         }
 
-        pointer data() noexcept {
-            if (size_ <= N)
-                return stack_.data();
-            else
-                return heap_->data();
-        }
-
-        const_pointer data() const noexcept {
-            if (size_ <= N)
-                return stack_.data();
-            else
-                return heap_->data();
-        }
+        pointer data() noexcept { return first_; }
+        const_pointer data() const noexcept { return first_; }
 
         //
         // Iterators
         //////////////
 
-        iterator begin() noexcept {
-            if (size_ <= N)
-                return stack_.data();
-            else
-                return heap_->data();
-        }
+        iterator begin() noexcept { return first_; }
+        iterator end() noexcept { return last_; }
 
-        iterator end() noexcept {
-            if (size_ <= N)
-                return stack_.data() + size_;
-            else
-                return heap_->data() + size_;
-        }
-
-        const_iterator begin() const noexcept {
-            if (size_ <= N)
-                return stack_.data();
-            else
-                return heap_->data();
-        }
-
-        const_iterator end() const noexcept {
-            if (size_ <= N)
-                return stack_.data() + size_;
-            else
-                return heap_->data() + size_;
-        }
+        const_iterator begin() const noexcept { return first_; }
+        const_iterator end() const noexcept { return last_; }
 
         const_iterator cbegin() const noexcept { return begin(); }
         const_iterator cend() const noexcept { return end(); }
 
-        reverse_iterator rbegin() noexcept {
-            if (size_ <= N)
-                return reverse_iterator(stack_.data() + size_);
-            else
-                return reverse_iterator(heap_->data() + size_);
-        }
-
-        reverse_iterator rend() noexcept {
-            if (size_ <= N)
-                return reverse_iterator(stack_.data());
-            else
-                return reverse_iterator(heap_->data());
-        }
+        reverse_iterator rbegin() noexcept { return end(); }
+        reverse_iterator rend() noexcept { return begin(); }
 
         const_reverse_iterator crbegin() const noexcept { return rbegin(); }
         const_reverse_iterator crend() const noexcept { return rend(); }
@@ -266,23 +253,35 @@ namespace Ubpa {
         // Capacity
         /////////////
 
-        bool empty() const noexcept { return size_ == 0; }
+        bool empty() const noexcept { return first_ == last_; }
 
-        size_type size() const noexcept { return size_; }
+        size_type size() const noexcept { return last_ - first_; }
 
         void shrink_to_fit() {
-            if (heap_.has_value())
-                heap_->shrink_to_fit();
+            if (heap_.has_value()) {
+                if (is_on_stack())
+                    heap_->shrink_to_fit();
+                else {
+                    heap_->shrink_to_fit();
+                    set_range_to_heap();
+                }
+            }
         }
 
         void reserve(size_type new_cap) {
-            if (!heap_.has_value())
-                heap_ = heap_type{};
-            heap_->reserve(N);
+            if (is_on_stack()){
+                if (!heap_.has_value())
+                    heap_ = heap_type{};
+                heap_->reserve(N);
+            }
+            else {
+                heap_->reserve(N);
+                set_range_to_heap();
+            }
         }
 
         size_type capacity() const noexcept {
-            if (size_ <= N)
+            if (is_on_stack())
                 return N;
             else
                 return heap_->capacity();
@@ -293,11 +292,11 @@ namespace Ubpa {
         //////////////
 
         void clear() noexcept {
-            if (size_ <= N)
+            if (is_on_stack())
                 stack_.clear();
             else
                 heap_->clear();
-            size_ = 0;
+            set_range_to_stack();
         }
 
         iterator insert(const_iterator pos, const value_type& value) {
@@ -309,24 +308,20 @@ namespace Ubpa {
         }
 
         iterator insert(const_iterator pos, size_type count, const value_type& value) {
-            const pointer myfirst = begin();
-            const pointer mylast = end();
-            assert(myfirst <= pos && pos <= mylast);
-            if (size_ + count > N) {
-                if (size_ <= N) {
-                    if (!heap_.has_value())
-                        heap_ = heap_type{};
-                    std::move(stack_.begin(), stack_.end(), std::back_inserter(*heap_));
-                    auto offset = pos - myfirst;
-                    return heap_->insert(heap_->begin() + offset, count, value);
-                }
-                else {
-                    auto offset = pos - heap_->data();
-                    return heap_->insert(heap_->begin() + offset, count, value);
-                }
+            assert(first_ <= pos && pos <= last_);
+            if (size() + count > N) {
+                auto offset = pos - first_;
+                if (is_on_stack())
+                    move_stack_to_empty_heap();
+                heap_->insert(heap_->begin() + offset, count, value);
+                set_range_to_heap();
+                return first_ + offset;
             }
-            else
-                return stack_.insert(pos, count, value);
+            else {
+                stack_.insert(pos, count, value);
+                ++last_;
+                return const_cast<iterator>(pos);
+            }
         }
         
         template<typename Iter> requires std::input_iterator<Iter>
@@ -341,158 +336,192 @@ namespace Ubpa {
         template<typename... Args>
         iterator emplace(const_iterator pos, Args&&... args) {
             iterator rst;
-            if (size_ < N)
+            const auto oldsize = size();
+            if (oldsize < N) {
                 rst = stack_.emplace(pos, std::forward<Args>(args)...);
-            else if (size_ == N) {
-                assert(stack_.begin() <= pos && pos <= stack_.begin() + N);
-                auto offset = pos - stack_.begin();
-                move_stack_to_empty_heap();
-                heap_->emplace(heap_->begin() + offset, std::forward<Args>(args)...);
-                rst = heap_->data() + offset;
+                ++last_;
             }
             else {
-                auto offset = pos - heap_->data();
+                assert(first_ <= pos && pos <= last_);
+                auto offset = pos - first_;
+                if (oldsize == N)
+                    move_stack_to_empty_heap();
                 heap_->emplace(heap_->begin() + offset, std::forward<Args>(args)...);
-                rst = heap_->data() + offset;
+                set_range_to_heap();
+                rst = first_ + offset;
             }
-
-            ++size_;
             return rst;
         }
 
         iterator erase(const_iterator pos) noexcept(std::is_nothrow_move_assignable_v<value_type>) {
             iterator rst;
-            if (size_ <= N)
+            if (is_on_stack()) {
                 rst = stack_.erase(pos);
+                --last_;
+            }
             else {
-                auto iter = heap_->erase(pos);
-                auto offset = std::distance(iter, heap_->begin());
-                if (size_ == N + 1) {
+                assert(first_ <= pos && pos < last_);
+                auto offset = pos - first_;
+                heap_->erase(heap_->begin() + offset);
+                if (heap_->size() == N) {
                     re_ctor_stack_from_heap();
                     heap_->clear();
-                    rst = stack_.begin() + offset;
+                    set_range_to_stack();
                 }
                 else
-                    rst = heap_->data() + offset;
-            }
+                    set_range_to_heap();
 
-            --size_;
+                rst = first_ + offset;
+            }
             return rst;
         }
 
         iterator erase(const_iterator first, const_iterator last) noexcept(std::is_nothrow_move_assignable_v<value_type>) {
             iterator rst;
-            if (size_ <= N) {
+            if (is_on_stack()) {
                 rst = stack_.erase(first, last);
-                size_ = stack_.size();
+                last_ -= last - first;
             }
             else {
-                auto offset = first - heap_->data();
-                auto iter = heap_->erase(heap_->begin() + offset, heap_->begin() + (last - heap_->data()));
+                auto offset = first - first_;
+                heap_->erase(heap_->begin() + offset, heap_->begin() + (last - heap_->data()));
                 if (heap_->size() <= N) {
-                    std::move(heap_->begin(), heap_->end(), std::back_inserter(stack_));
+                    re_ctor_stack_from_heap();
                     heap_->clear();
-                    rst = stack_.begin() + offset;
-                    size_ = stack_.size();
+                    set_range_to_stack();
                 }
-                else {
-                    rst = heap_->data() - offset;
-                    size_ = heap_->size();
-                }
+                else
+                    set_range_to_heap();
+
+                rst = first_ + offset;
             }
             return rst;
         }
 
         void push_back(const value_type& value) {
-            if (size_ < N)
+            const auto oldsize = size();
+            if (oldsize < N) {
                 stack_.push_back(value);
+                ++last_;
+            }
             else {
-                if (size_ == N)
+                if (oldsize == N)
                     move_stack_to_empty_heap();
                 heap_->push_back(value);
+                set_range_to_heap();
             }
-            size_++;
         }
 
         void push_back(T&& value) {
-            if (size_ < N)
+            const auto oldsize = size();
+            if (oldsize < N) {
                 stack_.push_back(std::move(value));
+                ++last_;
+            }
             else {
-                if (size_ == N)
+                if (oldsize == N)
                     move_stack_to_empty_heap();
                 heap_->push_back(std::move(value));
+                set_range_to_heap();
             }
-            size_++;
         }
 
         template<typename... Args>
         void emplace_back(Args&&... args) {
-            if (size_ < N)
+            const auto oldsize = size();
+            if (oldsize < N) {
                 stack_.emplace_back(std::forward<Args>(args)...);
+                ++last_;
+            }
             else {
-                if (size_ == N)
+                if (oldsize == N)
                     move_stack_to_empty_heap();
                 heap_->emplace_back(std::forward<Args>(args)...);
+                set_range_to_heap();
             }
-            size_++;
         }
 
         void pop_back() {
-            if (size_ <= N)
+            if (is_on_stack()) {
                 stack_.pop_back();
-            else if (size_ == N + 1) {
+                --last_;
+            }
+            else if (size() == N + 1) {
                 // move back to stack
                 re_ctor_stack_from_heap();
+                set_range_to_stack();
                 heap_->clear();
             }
             else {
                 // currently using heap
                 heap_->pop_back();
+                --last_;
             }
-            size_--;
         }
 
         void resize(size_type count) {
             if (count <= N) {
-                if (size_ > N) {
+                if (size() > N) {
                     stack_.assign(std::make_move_iterator(heap_->begin()), std::make_move_iterator(heap_->end()));
                     heap_->clear();
+                    set_range_to_stack();
                 }
-                else
+                else {
                     stack_.resize(static_cast<typename stack_type::size_type>(count));
+                    last_ = first_ - count;
+                }
             }
             else {
-                if (size_ <= N)
+                if (is_on_stack())
                     move_stack_to_empty_heap();
                 heap_->resize(count);
+                set_range_to_heap();
             }
-            size_ = count;
         }
 
         void resize(size_type count, const T& value) {
             if (count <= N) {
-                if (size_ > N) {
+                if (size() > N) {
                     stack_.assign(std::make_move_iterator(heap_->begin()), std::make_move_iterator(heap_->end()));
                     heap_->clear();
+                    set_range_to_stack();
                 }
-                else
+                else {
                     stack_.resize(static_cast<typename stack_type::size_type>(count), value);
+                    last_ = first_ - count;
+                }
             }
             else {
-                if (size_ <= N)
+                if (is_on_stack())
                     move_stack_to_empty_heap();
                 heap_->resize(count, value);
+                set_range_to_heap();
             }
-            size_ = count;
         }
 
         void swap(small_vector& other) noexcept {
+            bool lhs_on_stack = is_on_stack();
+            bool rhs_on_stack = other.is_on_stack();
             std::swap(stack_, other.stack_);
             std::swap(heap_, other.heap_);
-            std::swap(size_, other.size_);
+
+            if (rhs_on_stack)
+                set_range_to_stack();
+            else
+                set_range_to_heap();
+
+            if (lhs_on_stack)
+                other.set_range_to_stack();
+            else
+                other.set_range_to_heap();
         };
 
     private:
+        bool is_on_stack() const noexcept { return first_ == stack_.begin(); }
+        void set_range_to_stack() noexcept { first_ = stack_.begin(); last_ = stack_.end(); }
+        void set_range_to_heap() noexcept { first_ = heap_->data(); last_ = first_ + heap_->size(); }
+        [[noreturn]] void throw_out_of_range() const { throw std::out_of_range("invalid small_vector subscript"); }
+
         template <class Iter>
         void assign_range(Iter first, Iter last, std::input_iterator_tag) { // assign input range [first, last)
             const pointer stackfirst = stack_.begin();
@@ -514,10 +543,10 @@ namespace Ubpa {
                 for (; first != last; ++first)
                     heap_->emplace_back(*first);
 
-                size_ = heap_->size();
+                set_range_to_heap();
             }
             else
-                size_ = stack_.size();
+                set_range_to_stack();
         }
 
         template <class Iter>
@@ -531,13 +560,13 @@ namespace Ubpa {
                 else
                     heap_ = heap_type(first, last);
 
-                size_ = heap_->size();
+                set_range_to_heap();
             }
             else {
                 if (heap_.has_value())
                     heap_->clear();
                 stack_.assign(first, last);
-                size_ = stack_.size();
+                set_range_to_stack();
             }
         }
 
@@ -547,36 +576,33 @@ namespace Ubpa {
             if (first == last)
                 return const_cast<iterator>(pos); // nothing to do, avoid invalidating iterators
 
+            const auto whereoff = static_cast<size_type>(pos - first_);
             iterator rst;
-            if (size_ <= N) {
-                pointer mystackfirst = stack_.begin();
-                const auto whereoff = static_cast<size_type>(pos - mystackfirst);
-                const auto oldsize = size_;
+            if (is_on_stack()) {
+                const auto oldsize = size();
 
-                for (; first != last && size_ < N; ++first) {
+                for (; first != last && stack_.size() < N; ++first)
                     stack_.emplace_back(*first);
-                    ++size_;
-                }
 
                 if (first != last) {
                     move_stack_to_empty_heap();
 
-                    for (; first != last; ++first) {
+                    for (; first != last; ++first)
                         heap_->emplace_back(*first);
-                        ++size_;
-                    }
-                    rst = heap_->begin() + whereoff;
+                    set_range_to_heap();
                     std::rotate(rst, heap_->begin() + oldsize, heap_->end());
                 }
                 else {
-                    rst = mystackfirst + whereoff;
-                    std::rotate(rst, mystackfirst + oldsize, stack_.end());
+                    last_ = stack_.end();
+                    std::rotate(rst, first_ + oldsize, stack_.end());
                 }
             }
-            else
-                rst = heap_->insert(pos, first, last);
+            else {
+                heap_->insert(heap_->begin() + whereoff, first, last);
+                set_range_to_heap();
+            }
 
-            return rst;
+            return first_ + whereoff;
         }
 
         template<typename T>
@@ -588,25 +614,21 @@ namespace Ubpa {
         template<typename Iter>
         iterator insert_range(const_iterator pos, Iter first, Iter last, std::forward_iterator_tag) {
             const auto count = conver_size(static_cast<size_t>(std::distance(first, last)));
-            iterator rst;
-            if (size_ + count > N) {
-                if (size_ <= N) {
+            auto offset = pos - first_;
+            if (size() + count > N) {
+                if (is_on_stack()) {
                     assert(stack_.begin() <= pos && pos <= stack_.end());
-                    auto offset = pos - stack_.begin();
                     move_stack_to_empty_heap();
-                    heap_->insert(heap_->begin() + offset, first, last);
-                    rst = heap_->data() + offset;
                 }
-                else {
-                    auto offset = pos - heap_->data();
-                    heap_->insert(heap_->begin() + offset, first, last);
-                    rst = heap_->data() + offset;
-                }
+
+                heap_->insert(heap_->begin() + offset, first, last);
+                set_range_to_heap();
             }
-            else
-                rst = stack_.insert(pos, first, last);
-            size_ += count;
-            return rst;
+            else {
+                stack_.insert(pos, first, last);
+                last_ = stack_.end();
+            }
+            return first_ + offset;
         }
 
         template<std::size_t... Ns>
@@ -632,7 +654,8 @@ namespace Ubpa {
 
         stack_type stack_;
         std::optional<heap_type> heap_;
-        size_type size_;
+        pointer first_;
+        pointer last_;
     };
 
     template<typename T, std::size_t N, typename Allocator>

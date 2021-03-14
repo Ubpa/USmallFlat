@@ -337,7 +337,7 @@ namespace Ubpa {
         iterator erase(const_iterator pos) noexcept(std::is_nothrow_move_assignable_v<value_type>) {
             const pointer posptr = const_cast<pointer>(pos);
             const pointer mylast = end();
-            assert(begin() <= pos && pos <= end());
+            assert(begin() <= pos && pos < end());
 
             std::move(posptr + 1, mylast, posptr);
             if constexpr (!std::is_trivially_destructible_v<value_type>)
