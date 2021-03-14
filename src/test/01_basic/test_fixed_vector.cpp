@@ -126,4 +126,47 @@ TEST_CASE("fixed vector" * test_suite("all")) {
     REQUIRE(w[0] == 1);
     REQUIRE(w[1] == 2);
   }
+  {
+    fixed_vector<int, 5> v{1,2};
+    v.insert(v.begin() + 1, 4);
+    v.insert(v.begin() + 1, 2, 5);
+    REQUIRE(v.size() == 5);
+    REQUIRE(v[0] == 1);
+    REQUIRE(v[1] == 5);
+    REQUIRE(v[2] == 5);
+    REQUIRE(v[3] == 4);
+    REQUIRE(v[4] == 2);
+  }
+  {
+    fixed_vector<int, 5> v{1,2};
+    fixed_vector<int, 5> w{5,5,4};
+    v.insert(v.begin() + 1, w.begin(), w.end());
+    REQUIRE(v.size() == 5);
+    REQUIRE(v[0] == 1);
+    REQUIRE(v[1] == 5);
+    REQUIRE(v[2] == 5);
+    REQUIRE(v[3] == 4);
+    REQUIRE(v[4] == 2);
+  }
+  {
+    fixed_vector<int, 5> v;
+    v.assign(3, 2);
+    REQUIRE(v.size() == 3);
+    REQUIRE(v[0] == 2);
+    REQUIRE(v[1] == 2);
+    REQUIRE(v[2] == 2);
+    fixed_vector<int, 5> w{ 1,2 };
+    v.assign(w.begin(), w.end());
+    REQUIRE(v.size() == 2);
+    REQUIRE(v[0] == 1);
+    REQUIRE(v[1] == 2);
+  }
+  {
+    fixed_vector<int, 5> v{1,2,3,4,5};
+    v.erase(v.begin() + 1, v.begin() + 3);
+    REQUIRE(v.size() == 3);
+    REQUIRE(v[0] == 1);
+    REQUIRE(v[1] == 4);
+    REQUIRE(v[2] == 5);
+  }
 }

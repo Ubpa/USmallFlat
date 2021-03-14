@@ -4,6 +4,7 @@
 #include <stdexcept>
 #include <algorithm>
 #include <memory>
+#include <concepts>
 
 #ifdef _MSC_VER
 #pragma warning( push )
@@ -65,9 +66,9 @@ namespace Ubpa {
             other.clear();
         }
 
-        fixed_vector(std::initializer_list<value_type> initlist) : size_{ static_cast<size_type>(initlist.size()) } {
-            assert(initlist.size() <= max_size());
-            std::uninitialized_copy(initlist.begin(), initlist.end(), begin());
+        fixed_vector(std::initializer_list<value_type> ilist) : size_{ static_cast<size_type>(ilist.size()) } {
+            assert(ilist.size() <= max_size());
+            std::uninitialized_copy(ilist.begin(), ilist.end(), begin());
         }
 
         ~fixed_vector() { std::destroy(begin(), end()); }
@@ -132,8 +133,34 @@ namespace Ubpa {
             size_ = rhs_size;
             return *this;
         }
-        
-        // TODO: assign
+
+        void assign(size_type count, const value_type& value) {
+            assert(count <= max_size());
+
+            const pointer myfirst = begin();
+            const pointer mylast = end();
+
+            if (count > size_) {
+                std::fill(myfirst, mylast, value);
+
+                std::uninitialized_fill_n(mylast, count - size_, value);
+            }
+            else {
+                const pointer newlast = myfirst + count;
+                std::fill(myfirst, newlast, value);
+                std::destroy(newlast, mylast);
+            }
+            size_ = count;
+        }
+
+        template<class Iter> requires std::input_iterator<Iter>
+        void assign(Iter first, Iter last) {
+            assign_range(first, last, typename std::iterator_traits<Iter>::iterator_category{});
+        }
+
+        void assign(std::initializer_list<T> ilist) {
+            assign_range(ilist.begin(), ilist.end(), std::random_access_iterator_tag{});
+        }
 
         //
         // Element access
@@ -230,11 +257,112 @@ namespace Ubpa {
             size_ = 0;
         }
 
-        // TODO: insert
+        iterator insert(const_iterator pos, const value_type& value) {
+            return emplace(pos, value);
+        }
 
-        // TODO: emplace
+        iterator insert(const_iterator pos, value_type&& value) {
+            return emplace(pos, std::move(value));
+        }
 
-        // TODO: erase
+        iterator insert(const_iterator pos, size_type count, const value_type& value) {
+            assert(size() + count <= max_size());
+            iterator last = end();
+            assert(begin() <= pos && pos <= last);
+            const pointer posptr = const_cast<pointer>(pos);
+
+            const auto affected_elements = static_cast<size_type>(last - posptr);
+
+            if (affected_elements == 0)
+                ;
+            else if (affected_elements < count) {
+                // 1. pos -> end
+                if (pos != last)
+                    std::uninitialized_move(last - count, last, last);
+
+                // 2. [pos, last-count) --move--> [pos+count, last)
+                std::move(posptr, last - count, posptr + count);
+
+                // 3. destroy [pos, pos+count)
+                std::destroy(posptr, posptr + count);
+            }
+            else {
+                // [pos, last) --move--> [last, ...)
+                std::uninitialized_move(posptr, last, last);
+                std::destroy(posptr, last);
+            }
+
+            // 4. copy ctor at pos
+            std::uninitialized_fill(posptr, posptr + count, value);
+
+            size_ += count;
+
+            return posptr;
+        }
+        
+        template<typename Iter> requires std::input_iterator<Iter>
+        iterator insert(const_iterator pos, Iter first, Iter last) {
+            insert_range(pos, first, last, typename std::iterator_traits<Iter>::iterator_category{});
+            return const_cast<iterator>(pos);
+        }
+
+        iterator insert(const_iterator pos, std::initializer_list<value_type> ilist) {
+            return insert(pos, ilist.begin(), ilist.end());
+        }
+
+        template<typename... Args>
+        iterator emplace(const_iterator pos, Args&&... args) {
+            pointer posptr = const_cast<pointer>(pos);
+            assert(size() < max_size());
+            iterator last = end();
+            assert(begin() <= pos && pos <= last);
+
+            if (posptr != last) {
+                // 1. pos -> end
+                new(last)value_type{ *(last - 1) };
+                // 2. [pos, last-1) --move--> [pos+1, last)
+                std::move(posptr, last - 1, posptr + 1);
+                // 3. destroy
+                if constexpr (!std::is_trivially_destructible_v<value_type>)
+                    posptr->~value_type();
+            }
+            // 4. copy ctor at pos
+            new(posptr)value_type{ std::forward<Args>(args)... };
+
+            ++size_;
+
+            return posptr;
+        }
+
+        iterator erase(const_iterator pos) noexcept(std::is_nothrow_move_assignable_v<value_type>) {
+            const pointer posptr = const_cast<pointer>(pos);
+            const pointer mylast = end();
+            assert(begin() <= pos && pos <= end());
+
+            std::move(posptr + 1, mylast, posptr);
+            if constexpr (!std::is_trivially_destructible_v<value_type>)
+                (mylast - 1)->~value_type();
+            size_--;
+            return posptr;
+        }
+
+        iterator erase(const_iterator first, const_iterator last) noexcept(std::is_nothrow_move_assignable_v<value_type>) {
+            const pointer mylast = end();
+            assert(begin() <= first && first <= last && last <= mylast);
+
+            const pointer firstptr = const_cast<pointer>(first);
+            const pointer lastptr = const_cast<pointer>(last);
+            
+            const size_type affected_elements = conver_size(static_cast<size_t>(last - first));
+
+            if (affected_elements > 0) {
+                const pointer newlast = std::move(lastptr, mylast, firstptr);
+                std::destroy(newlast, mylast);
+                size_ -= affected_elements;
+            }
+
+            return firstptr;
+        }
 
         void push_back(const value_type& value) {
             assert(size() < max_size());
@@ -288,6 +416,113 @@ namespace Ubpa {
 
     private:
         [[noreturn]] void throw_out_of_range() const { throw std::out_of_range("invalid fixed_vector subscript"); }
+
+        template <class Iter>
+        void assign_range(Iter first, Iter last, std::input_iterator_tag) { // assign input range [first, last)
+            const pointer myfirst = begin();
+            const pointer mylast = end();
+
+            pointer cursor = myfirst;
+
+            for (; first != last && cursor != mylast; ++first, ++cursor)
+                *cursor = *first;
+
+            // Code size optimization: we've exhausted only the source, only the dest, or both.
+            // If we've exhausted only the source: we Trim, then Append does nothing.
+            // If we've exhausted only the dest: Trim does nothing, then we Append.
+            // If we've exhausted both: Trim does nothing, then Append does nothing.
+
+            // Trim.
+            std::destroy(cursor, mylast);
+            size_ = cursor - myfirst;
+
+            // Append.
+            for (; first != last; ++first)
+                emplace_back(*first); // performance note: emplace_back()'s strong guarantee is unnecessary here
+        }
+
+        template <class Iter>
+        void assign_range(Iter first, Iter last, std::forward_iterator_tag) { // assign forward range [first, last)
+            const auto newsize = conver_size(static_cast<size_t>(std::distance(first, last)));
+            assert(newsize <= max_size());
+            const pointer myfirst = begin();
+            const pointer mylast = end();
+
+            if (newsize > size_) {
+                // performance note: traversing [first, _Mid) twice
+                const Iter mid = std::next(first, static_cast<difference_type>(size_));
+                std::copy(first, mid, myfirst);
+                std::uninitialized_copy(mid, last, mylast);
+            }
+            else {
+                const pointer newlast = myfirst + newsize;
+                std::copy(first, last, myfirst);
+                std::destroy(newlast, mylast);
+            }
+
+            size_ = newsize;
+        }
+
+        template<typename Iter>
+        void insert_range(const_iterator pos, Iter first, Iter last, std::input_iterator_tag) {
+            assert(begin() <= pos && pos <= end());
+
+            if (first == last)
+                return; // nothing to do, avoid invalidating iterators
+
+            pointer myfirst = begin();
+            const auto whereoff = static_cast<size_type>(pos - myfirst);
+            const auto oldsize = size_;
+
+            for (; first != last; ++first) {
+                emplace_back(*first);
+                assert(size_ < max_size());
+                ++size_;
+            }
+
+            std::rotate(myfirst + whereoff, myfirst + oldsize, end());
+        }
+
+        template<typename T>
+        static constexpr size_type conver_size(const T& s) noexcept {
+            assert(s <= N);
+            return static_cast<size_type>(s);
+        }
+
+        template<typename Iter>
+        void insert_range(const_iterator pos, Iter first, Iter last, std::forward_iterator_tag) {
+
+            // insert forward range [first, last) at pos
+            const pointer posptr = const_cast<pointer>(pos);
+            const auto count = conver_size(static_cast<size_t>(std::distance(first, last)));
+
+            assert(count + size_ <= max_size());
+            assert(begin() <= pos && pos <= end());
+
+            const pointer oldlast = end();
+
+            // Attempt to provide the strong guarantee for EmplaceConstructible failure.
+            // If we encounter copy/move construction/assignment failure, provide the basic guarantee.
+            // (For one-at-back, this provides the strong guarantee.)
+
+            const auto affected_elements = static_cast<size_type>(oldlast - posptr);
+
+            if (count < affected_elements) { // some affected elements must be assigned
+                /*mylast = */std::uninitialized_move(oldlast - count, oldlast, oldlast);
+                std::move(posptr, oldlast - count, oldlast);
+                std::destroy(posptr, posptr + count);
+                std::uninitialized_copy(first, last, posptr);
+            }
+            else { // affected elements don't overlap before/after
+                const pointer relocated = posptr + count;
+                std::uninitialized_move(posptr, oldlast, relocated);
+                std::destroy(posptr, oldlast);
+
+                std::uninitialized_copy(first, last, posptr);
+            }
+
+            size_ += count;
+        }
 
         std::aligned_storage_t<sizeof(T)* N, alignof(T)> storage_;
         size_type size_;
