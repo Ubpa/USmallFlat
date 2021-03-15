@@ -169,4 +169,9 @@ TEST_CASE("fixed vector" * test_suite("all")) {
     REQUIRE(v[1] == 4);
     REQUIRE(v[2] == 5);
   }
+  {
+    fixed_vector<int, 5> v{1,2,3,4,5};
+    fixed_vector<int, 5> w{v.rbegin(), v.rend()};
+    REQUIRE(w == fixed_vector<int, 5>{ 5,4,3,2,1 });
+  }
 }

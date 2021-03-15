@@ -48,12 +48,12 @@ namespace Ubpa {
         fixed_vector() noexcept : size_{ 0 } {}
 
         explicit fixed_vector(size_type count) : size_{ count } {
-            assert(count <= max_size());
+            assert(count <= N);
             std::uninitialized_value_construct(begin(), end());
         }
 
         fixed_vector(size_type count, const value_type& value) : size_{ count } {
-            assert(count <= max_size());
+            assert(count <= N);
             std::uninitialized_fill(begin(), end(), value);
         }
 
@@ -67,9 +67,12 @@ namespace Ubpa {
         }
 
         fixed_vector(std::initializer_list<value_type> ilist) : size_{ static_cast<size_type>(ilist.size()) } {
-            assert(ilist.size() <= max_size());
+            assert(ilist.size() <= N);
             std::uninitialized_copy(ilist.begin(), ilist.end(), begin());
         }
+
+        template<typename Iter> requires std::input_iterator<Iter>
+        fixed_vector(Iter first, Iter last) : fixed_vector(first, last, typename std::iterator_traits<Iter>::iterator_category{}) {}
 
         ~fixed_vector() { std::destroy(begin(), end()); }
 
@@ -115,7 +118,7 @@ namespace Ubpa {
         }
 
         fixed_vector& operator=(std::initializer_list<value_type> rhs) {
-            assert(rhs.size() <= max_size());
+            assert(rhs.size() <= N);
             const size_type rhs_size = static_cast<size_type>(rhs.size());
             if (size_ > rhs_size) {
                 std::destroy(begin() + rhs_size, end());
@@ -135,7 +138,7 @@ namespace Ubpa {
         }
 
         void assign(size_type count, const value_type& value) {
-            assert(count <= max_size());
+            assert(count <= N);
 
             const pointer myfirst = begin();
             const pointer mylast = end();
@@ -266,7 +269,7 @@ namespace Ubpa {
         }
 
         iterator insert(const_iterator pos, size_type count, const value_type& value) {
-            assert(size() + count <= max_size());
+            assert(size() + count <= N);
             iterator last = end();
             assert(begin() <= pos && pos <= last);
             const pointer posptr = const_cast<pointer>(pos);
@@ -337,7 +340,7 @@ namespace Ubpa {
         iterator erase(const_iterator pos) noexcept(std::is_nothrow_move_assignable_v<value_type>) {
             const pointer posptr = const_cast<pointer>(pos);
             const pointer mylast = end();
-            assert(begin() <= pos && pos < end());
+            assert(begin() <= pos && pos < mylast);
 
             std::move(posptr + 1, mylast, posptr);
             if constexpr (!std::is_trivially_destructible_v<value_type>)
@@ -417,6 +420,17 @@ namespace Ubpa {
     private:
         [[noreturn]] void throw_out_of_range() const { throw std::out_of_range("invalid fixed_vector subscript"); }
 
+        template<typename Iter> requires std::input_iterator<Iter>
+        fixed_vector(Iter first, Iter last, std::input_iterator_tag) {
+            for (; first != last; ++first)
+                emplace_back(*first);
+        }
+        template<typename Iter> requires std::input_iterator<Iter>
+        fixed_vector(Iter first, Iter last, std::forward_iterator_tag) {
+            auto mylast = std::uninitialized_copy(first, last, begin());
+            size_ = conver_size(static_cast<size_t>(mylast - begin()));
+        }
+
         template <class Iter>
         void assign_range(Iter first, Iter last, std::input_iterator_tag) { // assign input range [first, last)
             const pointer myfirst = begin();
@@ -427,24 +441,19 @@ namespace Ubpa {
             for (; first != last && cursor != mylast; ++first, ++cursor)
                 *cursor = *first;
 
-            // Code size optimization: we've exhausted only the source, only the dest, or both.
-            // If we've exhausted only the source: we Trim, then Append does nothing.
-            // If we've exhausted only the dest: Trim does nothing, then we Append.
-            // If we've exhausted both: Trim does nothing, then Append does nothing.
-
             // Trim.
             std::destroy(cursor, mylast);
             size_ = cursor - myfirst;
 
             // Append.
             for (; first != last; ++first)
-                emplace_back(*first); // performance note: emplace_back()'s strong guarantee is unnecessary here
+                emplace_back(*first);
         }
 
         template <class Iter>
         void assign_range(Iter first, Iter last, std::forward_iterator_tag) { // assign forward range [first, last)
             const auto newsize = conver_size(static_cast<size_t>(std::distance(first, last)));
-            assert(newsize <= max_size());
+            assert(newsize <= N);
             const pointer myfirst = begin();
             const pointer mylast = end();
 
@@ -496,7 +505,7 @@ namespace Ubpa {
             const pointer posptr = const_cast<pointer>(pos);
             const auto count = conver_size(static_cast<size_t>(std::distance(first, last)));
 
-            assert(count + size_ <= max_size());
+            assert(count + size_ <= N);
             assert(begin() <= pos && pos <= end());
 
             const pointer oldlast = end();

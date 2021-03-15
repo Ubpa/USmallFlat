@@ -34,6 +34,11 @@ namespace Ubpa {
 
         small_vector() noexcept : first_{ stack_.begin() }, last_{ stack_.end() } {};
 
+        small_vector(const allocator_type& alloc) :
+            heap_{ std::in_place_t{}, alloc },
+            first_{ stack_.begin() },
+            last_{ stack_.begin() } {}
+
         explicit small_vector(size_type count) :
             stack_(static_cast<typename stack_type::size_type>(count <= N ? count : 0))
         {
@@ -44,6 +49,12 @@ namespace Ubpa {
             else
                 set_range_to_stack();
         }
+
+        small_vector(size_type count, const allocator_type& alloc) :
+            stack_(static_cast<typename stack_type::size_type>(count <= N ? 0 : count)),
+            heap_{ count <= N ? heap_type{ alloc } : heap_type{ count, alloc } },
+            first_{ count <= N ? stack_.begin() : heap_->data() },
+            last_{ count <= N ? stack_.end() : heap_->data() + count }{}
 
         small_vector(size_type count, const value_type& value) :
             stack_(static_cast<typename stack_type::size_type>(count <= N ? count : 0), value)
@@ -56,13 +67,19 @@ namespace Ubpa {
                 set_range_to_stack();
         }
 
-        small_vector(size_type count,
-            const value_type& value,
-            const allocator_type& alloc) :
+        small_vector(size_type count, const value_type& value, const allocator_type& alloc) :
             stack_(static_cast<typename stack_type::size_type>(count <= N ? 0 : count), value),
             heap_{ count <= N ? heap_type{ alloc } : heap_type{ count, value, alloc } },
             first_{ count <= N ? stack_.begin() : heap_->data() },
             last_{ count <= N ? stack_.end() : heap_->data() + count }{}
+
+        template<typename Iter> requires std::input_iterator<Iter>
+        small_vector(Iter first, Iter last) :
+            small_vector(first, last, typename std::iterator_traits<Iter>::iterator_category{}) {}
+
+        template<typename Iter> requires std::input_iterator<Iter>
+        small_vector(Iter first, Iter last, const allocator_type& alloc) :
+            small_vector(first, last, alloc, typename std::iterator_traits<Iter>::iterator_category{}) {}
 
         small_vector(const small_vector& other) :
             stack_{other.stack_},
@@ -522,18 +539,16 @@ namespace Ubpa {
         void set_range_to_heap() noexcept { first_ = heap_->data(); last_ = first_ + heap_->size(); }
         [[noreturn]] void throw_out_of_range() const { throw std::out_of_range("invalid small_vector subscript"); }
 
-        template <class Iter>
-        void assign_range(Iter first, Iter last, std::input_iterator_tag) { // assign input range [first, last)
-            const pointer stackfirst = stack_.begin();
-            const pointer stacklast = stack_.end();
+        template<typename U>
+        static size_type convert_size(const U& s) noexcept {
+            if constexpr (std::is_signed_v<U>)
+                assert(s >= 0);
+            assert(static_cast<std::size_t>(s) <= std::numeric_limits<size_type>::max());
+            return static_cast<size_type>(s);
+        }
 
-            pointer cursor = stackfirst;
-
-            for (; first != last && cursor != stacklast; ++first, ++cursor)
-                *cursor = *first;
-
-            stack_.erase(cursor, stacklast);
-
+        template<typename Iter>
+        void emplace_range(Iter first, Iter last) {
             for (; first != last && stack_.size() < N; ++first)
                 stack_.emplace_back(*first);
 
@@ -549,9 +564,67 @@ namespace Ubpa {
                 set_range_to_stack();
         }
 
+        template<typename Iter>
+        small_vector(Iter first, Iter last, std::input_iterator_tag) { emplace_range(first, last); }
+
+        template<typename Iter>
+        small_vector(Iter first, Iter last, std::forward_iterator_tag) {
+            const auto newsize = convert_size(std::distance(first, last));
+            if (newsize > N) {
+                heap_ = heap_type(first, last);
+                set_range_to_heap();
+            }
+            else {
+                stack_.assign(first, last);
+                set_range_to_stack();
+            }
+        }
+
+        template<typename Iter>
+        small_vector(Iter first, Iter last, const allocator_type& alloc, std::input_iterator_tag) :
+            heap_{ std::in_place_t{}, alloc }
+        {
+            emplace_range(first, last);
+        }
+
+        template<typename Iter>
+        small_vector(Iter first, Iter last, const allocator_type& alloc, std::forward_iterator_tag) :
+            heap_{ std::in_place_t{}, alloc }
+        {
+            const auto newsize = convert_size(std::distance(first, last));
+            if (newsize > N) {
+                heap_->assign(first, last);
+                set_range_to_heap();
+            }
+            else {
+                stack_.assign(first, last);
+                set_range_to_stack();
+            }
+        }
+
+        template<typename Iter>
+        void assign_range(Iter first, Iter last, std::input_iterator_tag) { // assign input range [first, last)
+            const pointer stackfirst = stack_.begin();
+            const pointer stacklast = stack_.end();
+
+            pointer cursor = stackfirst;
+            while (true) {
+                if (first == last) {
+                    last_ = stack_.erase(cursor, stacklast);
+                    break;
+                }
+                else if (cursor == stacklast) {
+                    emplace_range(first, last);
+                    break;
+                }
+                ++first;
+                ++cursor;
+            }
+        }
+
         template <class Iter>
         void assign_range(Iter first, Iter last, std::forward_iterator_tag) { // assign forward range [first, last)
-            const auto newsize = conver_size(static_cast<size_t>(std::distance(first, last)));
+            const auto newsize = convert_size(std::distance(first, last));
             
             if (newsize > N) {
                 stack_.clear();
@@ -577,7 +650,6 @@ namespace Ubpa {
                 return const_cast<iterator>(pos); // nothing to do, avoid invalidating iterators
 
             const auto whereoff = static_cast<size_type>(pos - first_);
-            iterator rst;
             if (is_on_stack()) {
                 const auto oldsize = size();
 
@@ -590,11 +662,11 @@ namespace Ubpa {
                     for (; first != last; ++first)
                         heap_->emplace_back(*first);
                     set_range_to_heap();
-                    std::rotate(rst, heap_->begin() + oldsize, heap_->end());
+                    std::rotate(heap_->begin() + whereoff, heap_->begin() + oldsize, heap_->end());
                 }
                 else {
                     last_ = stack_.end();
-                    std::rotate(rst, first_ + oldsize, stack_.end());
+                    std::rotate(first_ + whereoff, first_ + oldsize, last_);
                 }
             }
             else {
@@ -605,15 +677,9 @@ namespace Ubpa {
             return first_ + whereoff;
         }
 
-        template<typename T>
-        static constexpr size_type conver_size(const T& s) noexcept {
-            assert(s <= N);
-            return static_cast<size_type>(s);
-        }
-
         template<typename Iter>
         iterator insert_range(const_iterator pos, Iter first, Iter last, std::forward_iterator_tag) {
-            const auto count = conver_size(static_cast<size_t>(std::distance(first, last)));
+            const auto count = convert_size(std::distance(first, last));
             auto offset = pos - first_;
             if (size() + count > N) {
                 if (is_on_stack()) {
@@ -631,15 +697,9 @@ namespace Ubpa {
             return first_ + offset;
         }
 
-        template<std::size_t... Ns>
-        void re_ctor_stack_from_heap(std::index_sequence<Ns...>) {
-            assert(stack_.empty() && heap_->size() >= N);
-            static_assert(sizeof...(Ns) == N);
-            heap_type& heap_ref = *heap_;
-            new(&stack_)stack_type{ std::move(heap_ref[Ns])... };
-        }
         void re_ctor_stack_from_heap() {
-            re_ctor_stack_from_heap(std::make_index_sequence<N>{});
+            assert(stack_.empty() && heap_->size() >= N);
+            new(&stack_)stack_type(std::make_move_iterator(first_), std::make_move_iterator(first_ + N));
         }
 
         void move_stack_to_empty_heap() {

@@ -31,6 +31,12 @@ TEST_CASE("Copy construct a small vector of strings" * test_suite("constructors"
   REQUIRE(bar[5] == "f");
 }
 
+TEST_CASE("Copy construct a small vector by iterator" * test_suite("constructors")) {
+  std::vector<int> ints{ 1,2,3,4,5,6 };
+  small_vector<int, 5> copied{ ints.begin(), ints.end() };
+  REQUIRE(copied == small_vector<int, 5>{1, 2, 3, 4, 5, 6});
+}
+
 TEST_CASE("Move construct a small vector of chars" * test_suite("constructors")) {
   small_vector<char, 5> bar(std::move(small_vector<char, 5>{'a', 'b', 'c'}));
   REQUIRE(bar.size() == 3);
