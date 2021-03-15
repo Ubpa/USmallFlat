@@ -52,7 +52,7 @@ namespace Ubpa {
 
         small_vector(size_type count, const allocator_type& alloc) :
             stack_(static_cast<typename stack_type::size_type>(count <= N ? 0 : count)),
-            heap_{ count <= N ? heap_type{ alloc } : heap_type{ count, alloc } },
+            heap_{ count <= N ? heap_type(alloc) : heap_type(count, alloc) },
             first_{ count <= N ? stack_.begin() : heap_->data() },
             last_{ count <= N ? stack_.end() : heap_->data() + count }{}
 
@@ -69,7 +69,7 @@ namespace Ubpa {
 
         small_vector(size_type count, const value_type& value, const allocator_type& alloc) :
             stack_(static_cast<typename stack_type::size_type>(count <= N ? 0 : count), value),
-            heap_{ count <= N ? heap_type{ alloc } : heap_type{ count, value, alloc } },
+            heap_{ count <= N ? heap_type( alloc ) : heap_type( count, value, alloc ) },
             first_{ count <= N ? stack_.begin() : heap_->data() },
             last_{ count <= N ? stack_.end() : heap_->data() + count }{}
 
@@ -82,19 +82,19 @@ namespace Ubpa {
             small_vector(first, last, alloc, typename std::iterator_traits<Iter>::iterator_category{}) {}
 
         small_vector(const small_vector& other) :
-            stack_{other.stack_},
+            stack_(other.stack_),
             heap_{other.heap_},
             first_{other.is_on_stack()?stack_.begin():heap_->data()},
             last_{ other.is_on_stack() ? stack_.end() : heap_->data() + heap_->size() }{}
 
         small_vector(const small_vector& other, const allocator_type& alloc) :
-            stack_{ other.stack_ },
-            heap_{ other.heap_.has_value() ? heap_type{ *other.heap_, alloc } : heap_type{ alloc } },
+            stack_( other.stack_ ),
+            heap_{ other.heap_.has_value() ? heap_type( *other.heap_, alloc ) : heap_type( alloc ) },
             first_{ other.is_on_stack() ? stack_.begin() : heap_->data() },
             last_{ other.is_on_stack() ? stack_.end() : heap_->data() + heap_->size() } {}
 
         small_vector(small_vector&& other) noexcept :
-            stack_{ std::move(other.stack_) },
+            stack_( std::move(other.stack_) ),
             heap_{ std::move(other.heap_) },
             first_{ other.is_on_stack() ? stack_.begin() : heap_->data() },
             last_{ other.is_on_stack() ? stack_.end() : heap_->data() + heap_->size() }
@@ -103,8 +103,8 @@ namespace Ubpa {
         }
 
         small_vector(small_vector&& other, const allocator_type& alloc) noexcept :
-            stack_{ std::move(other.stack_) },
-            heap_{ other.heap_.has_value() ? heap_type{ std::move(*other.heap_), alloc } : heap_type{ alloc } },
+            stack_( std::move(other.stack_) ),
+            heap_{ other.heap_.has_value() ? heap_type( std::move(*other.heap_), alloc ) : heap_type( alloc ) },
             first_{ other.is_on_stack() ? stack_.begin() : heap_->data() },
             last_{ other.is_on_stack() ? stack_.end() : heap_->data() + heap_->size() }
         {
@@ -112,10 +112,10 @@ namespace Ubpa {
         }
 
         small_vector(std::initializer_list<T> ilist) :
-            stack_{ ilist.size() <= N ? ilist : std::initializer_list<T>{} }
+            stack_( ilist.size() <= N ? ilist : std::initializer_list<T>{} )
         {
             if (ilist.size() > N) {
-                heap_ = heap_type{ ilist };
+                heap_ = heap_type( ilist );
                 set_range_to_heap();
             }
             else
@@ -123,8 +123,8 @@ namespace Ubpa {
         }
 
         small_vector(std::initializer_list<T> ilist, const allocator_type& alloc) :
-            stack_{ ilist.size() <= N ? ilist : std::initializer_list<T>{} },
-            heap_{ ilist.size() <= N ? heap_type{ alloc } : heap_type{ ilist } },
+            stack_( ilist.size() <= N ? ilist : std::initializer_list<T>{} ),
+            heap_{ ilist.size() <= N ? heap_type( alloc ) : heap_type( ilist ) },
             first_{ ilist.size() <= N ? stack_.begin() : heap_->data() },
             last_{ ilist.size() <= N ? stack_.end() : heap_->data() + heap_->size() }{}
 
@@ -287,12 +287,15 @@ namespace Ubpa {
 
         void reserve(size_type new_cap) {
             if (is_on_stack()){
-                if (!heap_.has_value())
-                    heap_ = heap_type{};
-                heap_->reserve(N);
+                if (heap_.has_value())
+                    heap_->reserve(new_cap);
+                else if (new_cap > N) {
+                    heap_ = heap_type();
+                    heap_->reserve(new_cap);
+                }
             }
             else {
-                heap_->reserve(N);
+                heap_->reserve(new_cap);
                 set_range_to_heap();
             }
         }
@@ -485,7 +488,7 @@ namespace Ubpa {
                 }
                 else {
                     stack_.resize(static_cast<typename stack_type::size_type>(count));
-                    last_ = first_ - count;
+                    last_ = first_ + count;
                 }
             }
             else {
@@ -708,7 +711,7 @@ namespace Ubpa {
                 heap_->assign(std::make_move_iterator(stack_.begin()), std::make_move_iterator(stack_.end()));
             }
             else
-                heap_ = heap_type{ std::make_move_iterator(stack_.begin()), std::make_move_iterator(stack_.end()) };
+                heap_ = heap_type(std::make_move_iterator(stack_.begin()), std::make_move_iterator(stack_.end()));
             stack_.clear();
         }
 
