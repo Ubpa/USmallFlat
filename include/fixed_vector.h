@@ -23,7 +23,7 @@ namespace Ubpa::details {
 }
 
 namespace Ubpa {
-    template <class T, std::size_t N>
+    template <class T, std::size_t N = 16>
     class fixed_vector {
     public:
         //////////////////

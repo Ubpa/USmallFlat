@@ -7,7 +7,7 @@
 #include <optional>
 
 namespace Ubpa {
-    template <typename T, std::size_t N, typename Allocator = std::allocator<T>>
+    template <typename T, std::size_t N = 16, typename Allocator = std::allocator<T>>
     class small_vector : public std::ranges::view_interface<small_vector<T,N,Allocator>> {
         using stack_type = fixed_vector<T, N>;
         using heap_type = std::vector<T, Allocator>;
@@ -18,6 +18,7 @@ namespace Ubpa {
 
         using value_type = T;
         using size_type = std::size_t;
+        using difference_type = std::ptrdiff_t;
         using reference = typename std::vector<T, Allocator>::reference;
         using const_reference = typename std::vector<T, Allocator>::const_reference;
         using allocator_type = Allocator;
@@ -34,7 +35,7 @@ namespace Ubpa {
 
         small_vector() noexcept : first_{ stack_.begin() }, last_{ stack_.end() } {};
 
-        small_vector(const allocator_type& alloc) :
+        explicit small_vector(const allocator_type& alloc) :
             heap_{ std::in_place_t{}, alloc },
             first_{ stack_.begin() },
             last_{ stack_.begin() } {}
@@ -370,7 +371,7 @@ namespace Ubpa {
             iterator rst;
             if (is_on_stack()) {
                 rst = stack_.erase(first, last);
-                last_ -= last - first;
+                last_ = stack_.end();
             }
             else {
                 auto offset = first - first_;
@@ -671,8 +672,8 @@ namespace Ubpa {
         }
 
         void re_ctor_stack_from_heap() {
-            assert(stack_.empty() && heap_->size() >= N);
-            new(&stack_)stack_type(std::make_move_iterator(first_), std::make_move_iterator(first_ + N));
+            assert(stack_.empty());
+            new(&stack_)stack_type(std::make_move_iterator(first_), std::make_move_iterator(first_ + std::min(heap_->size(), N)));
         }
 
         void move_stack_to_empty_heap() {
