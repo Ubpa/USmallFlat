@@ -8,7 +8,7 @@
 
 namespace Ubpa {
     template <typename T, std::size_t N, typename Allocator = std::allocator<T>>
-    class small_vector {
+    class small_vector : public std::ranges::view_interface<small_vector<T,N,Allocator>> {
         using stack_type = fixed_vector<T, N>;
         using heap_type = std::vector<T, Allocator>;
     public:
@@ -219,34 +219,6 @@ namespace Ubpa {
             return first_[pos];
         }
 
-        reference operator[](size_type pos) noexcept {
-            pointer p = first_ + pos;
-            assert(p < last_);
-            return *p;
-        }
-
-        const_reference operator[](size_type pos) const noexcept {
-            const_pointer p = first_ + pos;
-            assert(p < last_);
-            return *p;
-        }
-
-        reference front() noexcept { return *begin(); }
-        const_reference front() const noexcept { return *begin(); }
-
-        reference back() noexcept {
-            assert(!empty());
-            return *(end() - 1);
-        }
-
-        const_reference back() const noexcept {
-            assert(!empty());
-            return *(end() - 1);
-        }
-
-        pointer data() noexcept { return first_; }
-        const_pointer data() const noexcept { return first_; }
-
         //
         // Iterators
         //////////////
@@ -269,10 +241,6 @@ namespace Ubpa {
         //
         // Capacity
         /////////////
-
-        bool empty() const noexcept { return first_ == last_; }
-
-        size_type size() const noexcept { return last_ - first_; }
 
         void shrink_to_fit() {
             if (heap_.has_value()) {
@@ -306,6 +274,8 @@ namespace Ubpa {
             else
                 return heap_->capacity();
         }
+
+        size_type size() const noexcept { return convert_size(last_ - first_); }
 
         //
         // Modifiers
