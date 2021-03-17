@@ -91,14 +91,14 @@ TEST_CASE("fixed flat set" * test_suite("all")) {
     REQUIRE(v.empty());
   }
   {
-      pmr_vector_flat_set<int> v;
+    pmr_vector_flat_set<int> v;
     v.insert(1);
     v.insert(2);
     v.insert(1);
     REQUIRE(v == pmr_vector_flat_set<int>{1, 2});
   }
   {
-      pmr_vector_flat_set<int> v{1,2,3,1,2};
+    pmr_vector_flat_set<int> v{1,2,3,1,2};
     REQUIRE(v == pmr_vector_flat_set<int>{1, 2, 3});
   }
   {
@@ -121,5 +121,12 @@ TEST_CASE("fixed flat set" * test_suite("all")) {
     REQUIRE(iter == v.begin() + 2);
     v.insert(iter, 3);
     REQUIRE(v == pmr_vector_flat_set<int>{1, 2, 3, 4});
+  }
+  {
+    fixed_vector<int, 5> s{1,2,4};
+    fixed_flat_set<int, 5> v{ s };
+    auto iter = v.lower_bound(3);
+    v.insert(iter, 3);
+    REQUIRE(v == fixed_flat_set<int, 5>{1, 2, 3, 4});
   }
 }
