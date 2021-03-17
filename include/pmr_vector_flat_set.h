@@ -4,5 +4,5 @@
 
 namespace Ubpa {
     template<typename Key, typename Compare = std::less<Key>>
-    using pmr_vector_flat_set = flat_set<std::pmr::vector<Key, Allocator>, Compare>;
+    using pmr_vector_flat_set = flat_set<Key, std::pmr::vector, Compare>;
 }

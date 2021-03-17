@@ -32,7 +32,7 @@ namespace Ubpa::details {
 }
 
 namespace Ubpa {
-    template <typename Vector, typename Compare = std::less<typename Vector::value_type>>
+    template <typename T, template<typename>class Vector, typename Compare = std::less<T>>
     class flat_set : private details::flat_set_base<Compare> {
         using mybase = details::flat_set_base<Compare>;
     public:
@@ -40,21 +40,17 @@ namespace Ubpa {
         // Member types //
         //////////////////
 
-        using container_type = Vector;
-        using key_type = typename Vector::value_type;
-        using value_type = typename Vector::value_type;
-        using size_type = typename Vector::size_type;
-        using difference_type = typename Vector::difference_type;
+        using container_type = Vector<T>;
+        using key_type = typename container_type::value_type;
+        using value_type = typename container_type::value_type;
+        using size_type = typename container_type::size_type;
+        using difference_type = typename container_type::difference_type;
         using key_compare = Compare;
         using value_compare = Compare;
-        using reference = typename Vector::reference;
-        using const_reference = typename Vector::const_reference;
-        using pointer = typename Vector::pointer;
-        using const_pointer = typename Vector::const_pointer;
-        using iterator = typename Vector::iterator;
-        using const_iterator = typename Vector::const_iterator;
-        using reverse_iterator = typename Vector::reverse_iterator;
-        using const_reverse_iterator = typename Vector::const_reverse_iterator;
+        using iterator = typename container_type::iterator;
+        using const_iterator = typename container_type::const_iterator;
+        using reverse_iterator = typename container_type::reverse_iterator;
+        using const_reverse_iterator = typename container_type::const_reverse_iterator;
 
         static_assert(std::random_access_iterator<iterator>);
 
@@ -64,8 +60,13 @@ namespace Ubpa {
 
         flat_set() : mybase(Compare()) {}
 
-        explicit flat_set(const container_type& sorted_storage, const Compare& comp = Compare()) : mybase(comp), storage(sorted_storage) {}
-        explicit flat_set(container_type&& sorted_storage, const Compare& comp = Compare()) : mybase(comp), storage(std::move(sorted_storage)) {}
+        explicit flat_set(const container_type& sorted_storage, const Compare& comp = Compare())
+            : mybase(comp), storage(sorted_storage)
+        { assert(std::is_sorted(begin(), end(), this->GetCompare())); }
+
+        explicit flat_set(container_type&& sorted_storage, const Compare& comp = Compare())
+            : mybase(comp), storage(std::move(sorted_storage))
+        { assert(std::is_sorted(begin(), end(), this->GetCompare())); }
 
         explicit flat_set(const Compare& comp) : mybase(comp) {}
 
@@ -211,7 +212,7 @@ namespace Ubpa {
 
         template<typename K,
             typename Comp_ = Compare, typename = std::enable_if_t<std::is_same_v<Comp_, Compare>, typename Comp_::is_transparent>>
-        iterator lower_bound(const K& key) const
+        iterator lower_bound(const K& key)
         { return std::lower_bound(begin(), end(), key, this->GetCompare()); }
 
         template<typename K,
@@ -221,7 +222,7 @@ namespace Ubpa {
 
         template<typename K,
             typename Comp_ = Compare, typename = std::enable_if_t<std::is_same_v<Comp_, Compare>, typename Comp_::is_transparent>>
-        iterator upper_bound(const K& key) const
+        iterator upper_bound(const K& key)
         { return std::upper_bound(begin(), end(), key, this->GetCompare()); }
 
         template<typename K,
@@ -267,7 +268,7 @@ namespace Ubpa {
                             auto lb = std::lower_bound(hint, cend(), value, this->GetCompare()); // value <= lb
                             if (lb == end()) {
                                 storage.push_back(std::forward<T>(value));
-                                return end();
+                                return std::prev(end());
                             }
                             else if (this->GetCompare()(value, *lb)) // value < lb
                                 return storage.insert(lb, std::forward<T>(value));
@@ -277,7 +278,7 @@ namespace Ubpa {
                     }
                     else { // hint == end()
                         storage.push_back(std::forward<T>(value));
-                        return end();
+                        return std::prev(end());
                     }
                 }
                 else { // value <= hint - 1
@@ -296,17 +297,17 @@ namespace Ubpa {
                         auto lb = std::lower_bound(hint, cend(), value, this->GetCompare()); // value <= lb
                         if (lb == end()) {
                             storage.push_back(std::forward<T>(value));
-                            return end();
+                            return std::prev(end());
                         }
                         else if (this->GetCompare()(value, *lb)) // value < lb
-                            return storage.insert(std::next(storage.begin(), lb - begin()), std::forward<T>(value));
+                            return storage.insert(lb, std::forward<T>(value));
                         else
                             return begin() + std::distance(cbegin(), lb); // value == lb
                     }
                 }
                 else { // empty
                     storage.push_back(std::forward<T>(value));
-                    return end();
+                    return std::prev(end());
                 }
             }
         }
@@ -326,7 +327,7 @@ namespace Ubpa {
             auto lb = lower_bound(value); // key <= lb
             if (lb == end()) {
                 storage.push_back(std::forward<T>(value));
-                return { lb, true };
+                return { std::prev(end()), true };
             }
             else if (this->GetCompare()(value, *lb)) // key < lb
                 return { storage.insert(lb, std::forward<T>(value)), true };
@@ -345,33 +346,33 @@ namespace Ubpa {
         }
     };
 
-    template<typename Vector, typename Compare>
-    bool operator==(const flat_set<Vector, Compare>& lhs, const flat_set<Vector, Compare>& rhs) {
+    template<typename T, template<typename>class Vector, typename Compare>
+    bool operator==(const flat_set<T, Vector, Compare>& lhs, const flat_set<T, Vector, Compare>& rhs) {
         return lhs.size() == rhs.size() && std::equal(lhs.begin(), lhs.end(), rhs.begin());
     }
 
-    template<typename Vector, typename Compare>
-    bool operator<(const flat_set<Vector, Compare>& lhs, const flat_set<Vector, Compare>& rhs) {
+    template<typename T, template<typename>class Vector, typename Compare>
+    bool operator<(const flat_set<T, Vector, Compare>& lhs, const flat_set<T, Vector, Compare>& rhs) {
         return std::lexicographical_compare(lhs.begin(), lhs.end(), rhs.begin(), rhs.end());
     }
 
-    template<typename Vector, typename Compare>
-    bool operator!=(const flat_set<Vector, Compare>& lhs, const flat_set<Vector, Compare>& rhs) {
+    template<typename T, template<typename>class Vector, typename Compare>
+    bool operator!=(const flat_set<T, Vector, Compare>& lhs, const flat_set<T, Vector, Compare>& rhs) {
         return !(lhs == rhs);
     }
 
-    template<typename Vector, typename Compare>
-    bool operator>(const flat_set<Vector, Compare>& lhs, const flat_set<Vector, Compare>& rhs) {
+    template<typename T, template<typename>class Vector, typename Compare>
+    bool operator>(const flat_set<T, Vector, Compare>& lhs, const flat_set<T, Vector, Compare>& rhs) {
         return rhs < lhs;
     }
 
-    template<typename Vector, typename Compare>
-    bool operator<=(const flat_set<Vector, Compare>& lhs, const flat_set<Vector, Compare>& rhs) {
+    template<typename T, template<typename>class Vector, typename Compare>
+    bool operator<=(const flat_set<T, Vector, Compare>& lhs, const flat_set<T, Vector, Compare>& rhs) {
         return !(rhs < lhs);
     }
 
-    template<typename Vector, typename Compare>
-    bool operator>=(const flat_set<Vector, Compare>& lhs, const flat_set<Vector, Compare>& rhs) {
+    template<typename T, template<typename>class Vector, typename Compare>
+    bool operator>=(const flat_set<T, Vector, Compare>& lhs, const flat_set<T, Vector, Compare>& rhs) {
         return !(lhs < rhs);
     }
 }
