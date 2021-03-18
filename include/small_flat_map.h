@@ -1,18 +1,9 @@
-#include "flat_map.h"
+#include "basic_flat_map.h"
 
-#include "small_vector.h"
-
-namespace Ubpa::details {
-    template<std::size_t N, typename Allocator>
-    struct small_flat_map_helper {
-        template<typename T>
-        using Ttype = small_vector<T, N, Allocator>;
-    };
-}
+#include "details/small_vector_bind.h"
 
 namespace Ubpa {
-    template<typename Key, typename T, std::size_t N = 16, typename Compare = std::less<Key>, typename Allocator = std::allocator<Key>>
-    using small_flat_map = flat_map<Key, T,
-        details::small_flat_map_helper<N, Allocator>::template Ttype,
-        Compare>;
+    template<typename Key, typename T, std::size_t N = 16, typename Compare = std::less<Key>, typename Allocator = std::allocator<std::pair<Key, T>>>
+    using small_flat_map = basic_flat_map<details::small_vector_bind<N, Allocator>::template Ttype,
+        Key, T, Compare>;
 }

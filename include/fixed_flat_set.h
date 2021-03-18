@@ -1,18 +1,9 @@
-#include "flat_set.h"
+#include "basic_flat_set.h"
 
-#include "fixed_vector.h"
-
-namespace Ubpa::details {
-    template<std::size_t N>
-    struct fixed_flat_set_helper {
-        template<typename T>
-        using Ttype = fixed_vector<T, N>;
-    };
-}
+#include "details/fixed_vector_bind.h"
 
 namespace Ubpa {
     template<typename Key, std::size_t N = 16, typename Compare = std::less<Key>>
-    using fixed_flat_set = flat_set<Key,
-        details::fixed_flat_set_helper<N>::template Ttype,
-        Compare>;
+    using fixed_flat_set = basic_flat_set<details::fixed_vector_bind<N>::template Ttype,
+        Key, Compare>;
 }

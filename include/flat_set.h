@@ -1,13 +1,11 @@
 #pragma once
 
-#include "details/flat_base_multiset.h"
+#include "basic_flat_set.h"
+
+#include "details/vector_bind.h"
 
 namespace Ubpa {
-    template <typename T, template<typename>class Vector, typename Compare = std::less<T>>
-    class flat_set : public details::flat_base_multiset<flat_set<T, Vector, Compare>, false, T, Vector, Compare> {
-        using mybase = details::flat_base_multiset<flat_set<T, Vector, Compare>, false, T, Vector, Compare>;
-    public:
-        using mybase::mybase;
-        using mybase::operator=;
-    };
+    template<typename Key, typename Compare = std::less<Key>, typename Allocator = std::allocator<Key>>
+    using flat_set = basic_flat_set<details::vector_bind<Allocator>::template Ttype,
+        Key, Compare>;
 }

@@ -30,7 +30,7 @@ namespace Ubpa::details {
         Compare comp;
     };
 
-    template <typename Impl, bool IsMulti, typename T, template<typename>class Vector, typename Compare>
+    template <typename Impl, bool IsMulti, template<typename>class Vector, typename T, typename Compare>
     class flat_base_multiset : private flat_base_multiset_base<Compare> {
         using mybase = flat_base_multiset_base<Compare>;
     public:
@@ -378,33 +378,33 @@ namespace Ubpa::details {
         }
     };
 
-    template <typename Impl, bool IsMulti, typename T, template<typename>class Vector, typename Compare>
-    bool operator==(const flat_base_multiset<Impl, IsMulti, T, Vector, Compare>& lhs, const flat_base_multiset<Impl, IsMulti, T, Vector, Compare>& rhs) {
+    template <typename Impl, bool IsMulti, template<typename>class Vector, typename T, typename Compare>
+    bool operator==(const flat_base_multiset<Impl, IsMulti, Vector, T, Compare>& lhs, const flat_base_multiset<Impl, IsMulti, Vector, T, Compare>& rhs) {
         return lhs.size() == rhs.size() && std::equal(lhs.begin(), lhs.end(), rhs.begin());
     }
 
-    template <typename Impl, bool IsMulti, typename T, template<typename>class Vector, typename Compare>
-    bool operator<(const flat_base_multiset<Impl, IsMulti, T, Vector, Compare>& lhs, const flat_base_multiset<Impl, IsMulti, T, Vector, Compare>& rhs) {
+    template <typename Impl, bool IsMulti, template<typename>class Vector, typename T, typename Compare>
+    bool operator<(const flat_base_multiset<Impl, IsMulti, Vector, T, Compare>& lhs, const flat_base_multiset<Impl, IsMulti, Vector, T, Compare>& rhs) {
         return std::lexicographical_compare(lhs.begin(), lhs.end(), rhs.begin(), rhs.end());
     }
 
-    template <typename Impl, bool IsMulti, typename T, template<typename>class Vector, typename Compare>
-    bool operator!=(const flat_base_multiset<Impl, IsMulti, T, Vector, Compare>& lhs, const flat_base_multiset<Impl, IsMulti, T, Vector, Compare>& rhs) {
+    template <typename Impl, bool IsMulti, template<typename>class Vector, typename T, typename Compare>
+    bool operator!=(const flat_base_multiset<Impl, IsMulti, Vector, T, Compare>& lhs, const flat_base_multiset<Impl, IsMulti, Vector, T, Compare>& rhs) {
         return !(lhs == rhs);
     }
 
-    template <typename Impl, bool IsMulti, typename T, template<typename>class Vector, typename Compare>
-    bool operator>(const flat_base_multiset<Impl, IsMulti, T, Vector, Compare>& lhs, const flat_base_multiset<Impl, IsMulti, T, Vector, Compare>& rhs) {
+    template <typename Impl, bool IsMulti, template<typename>class Vector, typename T, typename Compare>
+    bool operator>(const flat_base_multiset<Impl, IsMulti, Vector, T, Compare>& lhs, const flat_base_multiset<Impl, IsMulti, Vector, T, Compare>& rhs) {
         return rhs < lhs;
     }
 
-    template <typename Impl, bool IsMulti, typename T, template<typename>class Vector, typename Compare>
-    bool operator<=(const flat_base_multiset<Impl, IsMulti, T, Vector, Compare>& lhs, const flat_base_multiset<Impl, IsMulti, T, Vector, Compare>& rhs) {
+    template <typename Impl, bool IsMulti, template<typename>class Vector, typename T, typename Compare>
+    bool operator<=(const flat_base_multiset<Impl, IsMulti, Vector, T, Compare>& lhs, const flat_base_multiset<Impl, IsMulti, Vector, T, Compare>& rhs) {
         return !(rhs < lhs);
     }
 
-    template <typename Impl, bool IsMulti, typename T, template<typename>class Vector, typename Compare>
-    bool operator>=(const flat_base_multiset<Impl, IsMulti, T, Vector, Compare>& lhs, const flat_base_multiset<Impl, IsMulti, T, Vector, Compare>& rhs) {
+    template <typename Impl, bool IsMulti, template<typename>class Vector, typename T, typename Compare>
+    bool operator>=(const flat_base_multiset<Impl, IsMulti, Vector, T, Compare>& lhs, const flat_base_multiset<Impl, IsMulti, Vector, T, Compare>& rhs) {
         return !(lhs < rhs);
     }
 }

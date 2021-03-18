@@ -78,9 +78,9 @@ namespace Ubpa::details {
     // require
     // - Vector<std::pair<const Key, T>>::iterator <=> Vector<std::pair<Key, T>>::iterator
     // - Vector<std::pair<const Key, T>>::const_iterator <=> Vector<std::pair<Key, T>>::const_iterator
-    template <typename Impl, bool IsMulti, typename Key, typename T, template<typename>class Vector, typename Compare>
-    class flat_base_multimap : protected flat_base_multiset<Impl, IsMulti, std::pair<Key, T>, Vector, flat_base_multimap_comp<std::pair<Key, T>, Compare>> {
-        using mybase = flat_base_multiset<Impl, IsMulti, std::pair<Key, T>, Vector, flat_base_multimap_comp<std::pair<Key, T>, Compare>>;
+    template <typename Impl, bool IsMulti, template<typename>class Vector, typename Key, typename T, typename Compare>
+    class flat_base_multimap : protected flat_base_multiset<Impl, IsMulti, Vector, std::pair<Key, T>, flat_base_multimap_comp<std::pair<Key, T>, Compare>> {
+        using mybase = flat_base_multiset<Impl, IsMulti, Vector, std::pair<Key, T>, flat_base_multimap_comp<std::pair<Key, T>, Compare>>;
     public:
         //////////////////
         // Member types //
@@ -292,33 +292,33 @@ namespace Ubpa::details {
         { return reinterpret_cast<const std::pair<iterator, bool>&>(iter); }
     };
 
-    template <typename Impl, bool IsMulti, typename Key, typename T, template<typename>class Vector, typename Compare>
-    bool operator==(const flat_base_multimap<Impl, IsMulti, Key, T, Vector, Compare>& lhs, const flat_base_multimap<Impl, IsMulti, Key, T, Vector, Compare>& rhs) {
+    template <typename Impl, bool IsMulti, template<typename>class Vector, typename Key, typename T, typename Compare>
+    bool operator==(const flat_base_multimap<Impl, IsMulti, Vector, Key, T, Compare>& lhs, const flat_base_multimap<Impl, IsMulti, Vector, Key, T, Compare>& rhs) {
         return lhs.size() == rhs.size() && std::equal(lhs.begin(), lhs.end(), rhs.begin());
     }
 
-    template <typename Impl, bool IsMulti, typename Key, typename T, template<typename>class Vector, typename Compare>
-    bool operator<(const flat_base_multimap<Impl, IsMulti, Key, T, Vector, Compare>& lhs, const flat_base_multimap<Impl, IsMulti, Key, T, Vector, Compare>& rhs) {
+    template <typename Impl, bool IsMulti, template<typename>class Vector, typename Key, typename T, typename Compare>
+    bool operator<(const flat_base_multimap<Impl, IsMulti, Vector, Key, T, Compare>& lhs, const flat_base_multimap<Impl, IsMulti, Vector, Key, T, Compare>& rhs) {
         return std::lexicographical_compare(lhs.begin(), lhs.end(), rhs.begin(), rhs.end());
     }
 
-    template <typename Impl, bool IsMulti, typename Key, typename T, template<typename>class Vector, typename Compare>
-    bool operator!=(const flat_base_multimap<Impl, IsMulti, Key, T, Vector, Compare>& lhs, const flat_base_multimap<Impl, IsMulti, Key, T, Vector, Compare>& rhs) {
+    template <typename Impl, bool IsMulti, template<typename>class Vector, typename Key, typename T, typename Compare>
+    bool operator!=(const flat_base_multimap<Impl, IsMulti, Vector, Key, T, Compare>& lhs, const flat_base_multimap<Impl, IsMulti, Vector, Key, T, Compare>& rhs) {
         return !(lhs == rhs);
     }
 
-    template <typename Impl, bool IsMulti, typename Key, typename T, template<typename>class Vector, typename Compare>
-    bool operator>(const flat_base_multimap<Impl, IsMulti, Key, T, Vector, Compare>& lhs, const flat_base_multimap<Impl, IsMulti, Key, T, Vector, Compare>& rhs) {
+    template <typename Impl, bool IsMulti, template<typename>class Vector, typename Key, typename T, typename Compare>
+    bool operator>(const flat_base_multimap<Impl, IsMulti, Vector, Key, T, Compare>& lhs, const flat_base_multimap<Impl, IsMulti, Vector, Key, T, Compare>& rhs) {
         return rhs < lhs;
     }
 
-    template <typename Impl, bool IsMulti, typename Key, typename T, template<typename>class Vector, typename Compare>
-    bool operator<=(const flat_base_multimap<Impl, IsMulti, Key, T, Vector, Compare>& lhs, const flat_base_multimap<Impl, IsMulti, Key, T, Vector, Compare>& rhs) {
+    template <typename Impl, bool IsMulti, template<typename>class Vector, typename Key, typename T, typename Compare>
+    bool operator<=(const flat_base_multimap<Impl, IsMulti, Vector, Key, T, Compare>& lhs, const flat_base_multimap<Impl, IsMulti, Vector, Key, T, Compare>& rhs) {
         return !(rhs < lhs);
     }
 
-    template <typename Impl, bool IsMulti, typename Key, typename T, template<typename>class Vector, typename Compare>
-    bool operator>=(const flat_base_multimap<Impl, IsMulti, Key, T, Vector, Compare>& lhs, const flat_base_multimap<Impl, IsMulti, Key, T, Vector, Compare>& rhs) {
+    template <typename Impl, bool IsMulti, template<typename>class Vector, typename Key, typename T, typename Compare>
+    bool operator>=(const flat_base_multimap<Impl, IsMulti, Vector, Key, T, Compare>& lhs, const flat_base_multimap<Impl, IsMulti, Vector, Key, T, Compare>& rhs) {
         return !(lhs < rhs);
     }
 }
