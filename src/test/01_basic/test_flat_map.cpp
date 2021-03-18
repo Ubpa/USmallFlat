@@ -15,7 +15,7 @@ namespace Ubpa::details {
     };
 }
 template<typename Key, typename T, std::size_t N, typename Compare = std::less<Key>>
-using fixed_flat_map = flat_map<Key, T, details::fixed_flat_map_helper<N>::template Ttype>;
+using fixed_flat_map = flat_map<Key, T, details::fixed_flat_map_helper<N>::template Ttype, Compare>;
 
 TEST_CASE("fixed flat map" * test_suite("all")) {
   static_assert(sizeof(fixed_flat_map<int, int, 5>) == sizeof(fixed_flat_set<std::pair<int, int>, 5>));
