@@ -31,4 +31,16 @@ TEST_CASE("fixed flat map" * test_suite("all")) {
     fixed_flat_map<int, int, 5> p{ {0, 1}, { 1,4 }, { 2,3 } };
     REQUIRE(m == p);
   }
+  {
+    fixed_flat_map<int, int, 5> m{ {0,1}, {1,2} };
+    m[1] = 3;
+    fixed_flat_map<int, int, 5> p{ {0,1}, {1,3} };
+    REQUIRE(m == p);
+  }
+  {
+    fixed_flat_map<int, int, 5> m{ {0,1}, {1,2} };
+    m[1] = 3;
+    fixed_flat_map<int, int, 5> p{ {0,1}, {1,3} };
+    REQUIRE(m == p);
+  }
 }

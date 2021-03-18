@@ -8,7 +8,8 @@
 
 namespace Ubpa {
     template <typename T, std::size_t N = 16, typename Allocator = std::allocator<T>>
-    class small_vector : public std::ranges::view_interface<small_vector<T,N,Allocator>> {
+    class small_vector : public std::ranges::view_interface<small_vector<T, N, Allocator>> {
+        using mybase = std::ranges::view_interface<small_vector<T, N, Allocator>>;
         using stack_type = fixed_vector<T, N>;
         using heap_type = std::vector<T, Allocator>;
     public:

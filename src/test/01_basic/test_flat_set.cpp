@@ -1,10 +1,19 @@
 #include "doctest.hpp"
+
 #include <flat_set.h>
+#include <fixed_vector.h>
 #include <small_vector.h>
+
+#include <fixed_flat_set.h>
 #include <small_flat_set.h>
 #include <vector_flat_set.h>
-#include <fixed_flat_set.h>
 #include <pmr_vector_flat_set.h>
+
+#include <fixed_flat_multiset.h>
+#include <small_flat_multiset.h>
+#include <vector_flat_multiset.h>
+#include <pmr_vector_flat_multiset.h>
+
 using doctest::test_suite;
 using namespace Ubpa;
 #include <string>
@@ -128,5 +137,11 @@ TEST_CASE("fixed flat set" * test_suite("all")) {
     auto iter = v.lower_bound(3);
     v.insert(iter, 3);
     REQUIRE(v == fixed_flat_set<int, 5>{1, 2, 3, 4});
+  }
+  //--
+  {
+    fixed_flat_multiset<int, 5> v{ 1,1,2,3 };
+    v.insert(2);
+    REQUIRE(v == fixed_flat_multiset<int, 5>{1, 1, 2, 2, 3});
   }
 }
