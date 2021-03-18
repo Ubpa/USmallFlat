@@ -1,9 +1,9 @@
 #include "doctest.hpp"
-#include <flat_map.h>
-#include <fixed_flat_set.h>
-#include <fixed_flat_map.h>
-#include <flat_map.h>
-#include <small_vector.h>
+#include <USmallFlat/flat_map.hpp>
+#include <USmallFlat/fixed_flat_set.hpp>
+#include <USmallFlat/fixed_flat_map.hpp>
+#include <USmallFlat/flat_map.hpp>
+#include <USmallFlat/small_vector.hpp>
 using doctest::test_suite;
 using namespace Ubpa;
 #include <string>

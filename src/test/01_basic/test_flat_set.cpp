@@ -1,18 +1,18 @@
 #include "doctest.hpp"
 
-#include <flat_set.h>
-#include <fixed_vector.h>
-#include <small_vector.h>
+#include <USmallFlat/flat_set.hpp>
+#include <USmallFlat/fixed_vector.hpp>
+#include <USmallFlat/small_vector.hpp>
 
-#include <fixed_flat_set.h>
-#include <small_flat_set.h>
-#include <flat_set.h>
-#include <pmr/flat_set.h>
+#include <USmallFlat/fixed_flat_set.hpp>
+#include <USmallFlat/small_flat_set.hpp>
+#include <USmallFlat/flat_set.hpp>
+#include <USmallFlat/pmr/flat_set.hpp>
 
-#include <fixed_flat_multiset.h>
-#include <small_flat_multiset.h>
-#include <flat_multiset.h>
-#include <pmr/flat_multiset.h>
+#include <USmallFlat/fixed_flat_multiset.hpp>
+#include <USmallFlat/small_flat_multiset.hpp>
+#include <USmallFlat/flat_multiset.hpp>
+#include <USmallFlat/pmr/flat_multiset.hpp>
 
 using doctest::test_suite;
 using namespace Ubpa;

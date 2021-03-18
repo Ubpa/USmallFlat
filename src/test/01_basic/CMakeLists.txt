@@ -8,7 +8,7 @@ Ubpa_AddTarget(
   TEST
   MODE EXE
   LIB
-    Ubpa::USmallVector_core
+    Ubpa::USmallFlat_core
   DEFINE
     _HAS_DEPRECATED_UNCAUGHT_EXCEPTION # C++17
 )

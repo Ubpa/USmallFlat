@@ -4,5 +4,5 @@ Ubpa_AddTarget(
   SOURCE
     "${PROJECT_SOURCE_DIR}/include"
   LIB
-    Ubpa::USmallVector_core
+    Ubpa::USmallFlat_core
 )
