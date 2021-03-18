@@ -6,6 +6,7 @@
 #include <memory>
 #include <concepts>
 #include <type_traits>
+#include <cstring>
 
 #ifdef _MSC_VER
 #pragma warning( push )

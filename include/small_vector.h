@@ -8,8 +8,7 @@
 
 namespace Ubpa {
     template <typename T, std::size_t N = 16, typename Allocator = std::allocator<T>>
-    class small_vector : public std::ranges::view_interface<small_vector<T, N, Allocator>> {
-        using mybase = std::ranges::view_interface<small_vector<T, N, Allocator>>;
+    class small_vector {
         using stack_type = fixed_vector<T, N>;
         using heap_type = std::vector<T, Allocator>;
     public:
@@ -221,6 +220,34 @@ namespace Ubpa {
             return first_[pos];
         }
 
+        reference operator[](size_type pos) noexcept {
+            pointer p = first_ + pos;
+            assert(p < last_);
+            return *p;
+        }
+
+        const_reference operator[](size_type pos) const noexcept {
+            const_pointer p = first_ + pos;
+            assert(p < last_);
+            return *p;
+        }
+
+        pointer data() noexcept { return first_; }
+        const_pointer data() const noexcept { return first_; }
+
+        reference front() noexcept { return *begin(); }
+        const_reference front() const noexcept { return *begin(); }
+
+        reference back() noexcept {
+            assert(!empty());
+            return *(end() - 1);
+        }
+
+        const_reference back() const noexcept {
+            assert(!empty());
+            return *(end() - 1);
+        }
+
         //
         // Iterators
         //////////////
@@ -244,15 +271,57 @@ namespace Ubpa {
         // Capacity
         /////////////
 
-        void shrink_to_fit() {
-            if (heap_.has_value()) {
-                if (is_on_stack())
-                    heap_->shrink_to_fit();
+        bool empty() const noexcept { return last_ == first_; }
+
+        size_type size() const noexcept { return convert_size(last_ - first_); }
+
+        size_type max_size() const noexcept { return std::numeric_limits<size_type>::max(); }
+
+        void resize(size_type count) {
+            if (count <= N) {
+                if (size() > N) {
+                    stack_.assign(std::make_move_iterator(heap_->begin()), std::make_move_iterator(heap_->end()));
+                    heap_->clear();
+                    set_range_to_stack();
+                }
                 else {
-                    heap_->shrink_to_fit();
-                    set_range_to_heap();
+                    stack_.resize(static_cast<typename stack_type::size_type>(count));
+                    last_ = first_ + count;
                 }
             }
+            else {
+                if (is_on_stack())
+                    move_stack_to_empty_heap();
+                heap_->resize(count);
+                set_range_to_heap();
+            }
+        }
+
+        void resize(size_type count, const T& value) {
+            if (count <= N) {
+                if (size() > N) {
+                    stack_.assign(std::make_move_iterator(heap_->begin()), std::make_move_iterator(heap_->end()));
+                    heap_->clear();
+                    set_range_to_stack();
+                }
+                else {
+                    stack_.resize(static_cast<typename stack_type::size_type>(count), value);
+                    last_ = first_ - count;
+                }
+            }
+            else {
+                if (is_on_stack())
+                    move_stack_to_empty_heap();
+                heap_->resize(count, value);
+                set_range_to_heap();
+            }
+        }
+
+        size_type capacity() const noexcept {
+            if (is_on_stack())
+                return N;
+            else
+                return heap_->capacity();
         }
 
         void reserve(size_type new_cap) {
@@ -270,14 +339,16 @@ namespace Ubpa {
             }
         }
 
-        size_type capacity() const noexcept {
-            if (is_on_stack())
-                return N;
-            else
-                return heap_->capacity();
+        void shrink_to_fit() {
+            if (heap_.has_value()) {
+                if (is_on_stack())
+                    heap_->shrink_to_fit();
+                else {
+                    heap_->shrink_to_fit();
+                    set_range_to_heap();
+                }
+            }
         }
-
-        size_type size() const noexcept { return convert_size(last_ - first_); }
 
         //
         // Modifiers
@@ -448,46 +519,6 @@ namespace Ubpa {
                 // currently using heap
                 heap_->pop_back();
                 --last_;
-            }
-        }
-
-        void resize(size_type count) {
-            if (count <= N) {
-                if (size() > N) {
-                    stack_.assign(std::make_move_iterator(heap_->begin()), std::make_move_iterator(heap_->end()));
-                    heap_->clear();
-                    set_range_to_stack();
-                }
-                else {
-                    stack_.resize(static_cast<typename stack_type::size_type>(count));
-                    last_ = first_ + count;
-                }
-            }
-            else {
-                if (is_on_stack())
-                    move_stack_to_empty_heap();
-                heap_->resize(count);
-                set_range_to_heap();
-            }
-        }
-
-        void resize(size_type count, const T& value) {
-            if (count <= N) {
-                if (size() > N) {
-                    stack_.assign(std::make_move_iterator(heap_->begin()), std::make_move_iterator(heap_->end()));
-                    heap_->clear();
-                    set_range_to_stack();
-                }
-                else {
-                    stack_.resize(static_cast<typename stack_type::size_type>(count), value);
-                    last_ = first_ - count;
-                }
-            }
-            else {
-                if (is_on_stack())
-                    move_stack_to_empty_heap();
-                heap_->resize(count, value);
-                set_range_to_heap();
             }
         }
 

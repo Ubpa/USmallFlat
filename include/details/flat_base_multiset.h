@@ -47,6 +47,10 @@ namespace Ubpa::details {
         using difference_type = typename container_type::difference_type;
         using key_compare = Compare;
         using value_compare = Compare;
+        using pointer = typename container_type::pointer;
+        using const_pointer = typename container_type::const_pointer;
+        using reference = typename container_type::reference;
+        using const_reference = typename container_type::const_reference;
         using iterator = typename container_type::iterator;
         using const_iterator = typename container_type::const_iterator;
         using reverse_iterator = typename container_type::reverse_iterator;
@@ -116,6 +120,16 @@ namespace Ubpa::details {
         reverse_iterator rend() noexcept { return storage.rend(); }
         const_reverse_iterator rend() const noexcept { return storage.rend(); }
         const_reverse_iterator crend() const noexcept { return storage.crend(); }
+
+        //
+        // Element access
+        ///////////////////
+
+        value_type* data() noexcept { return storage.data(); }
+        const value_type* data() const noexcept { return storage.data(); }
+
+        reference front() { return *storage.begin(); }
+        const value_type& front() const { return *storage.begin(); }
 
         //
         // Capacity
@@ -279,32 +293,35 @@ namespace Ubpa::details {
         template<typename K>
         iterator t_find(const K& key) {
             auto lb = lower_bound(key); // key <= lb
-            if (lb == end() || this->GetCompare()(key, *lb)) // key < lb
-                return end();
+            auto e = end();
+            if (lb == e || this->GetCompare()(key, *lb)) // key < lb
+                return e;
             else
                 return lb;
         }
 
-        template<typename T> requires std::is_same<value_type, std::remove_cvref_t<T>>::value
-        iterator emplace_hint_impl(const_iterator hint, T&& value) {
+        template<typename V> requires std::is_same<value_type, std::remove_cvref_t<V>>::value
+        iterator emplace_hint_impl(const_iterator hint, V&& value) {
             assert(begin() <= hint && hint <= end());
             
             const_iterator first;
             const_iterator last;
 
-            if (hint == begin() || this->GetCompare()(*std::prev(hint), value)) { // value > hint - 1
+            auto& comp = this->GetCompare();
+
+            if (hint == begin() || comp(*std::prev(hint), value)) { // value > hint - 1
                 if (hint < end()) {
                     if constexpr (is_multi) {
-                        if (!this->GetCompare()(*hint, value)) // value <= hint
-                            return storage.insert(hint, std::forward<T>(value));
+                        if (!comp(*hint, value)) // value <= hint
+                            return storage.insert(hint, std::forward<V>(value));
                         else { // value > hint
-                            auto lb = std::lower_bound(std::next(hint), cend(), value, this->GetCompare()); // value <= lb
-                            return storage.insert(lb, std::forward<T>(value));
+                            auto lb = std::lower_bound(std::next(hint), cend(), value, comp); // value <= lb
+                            return storage.insert(lb, std::forward<V>(value));
                         }
                     }
                     else {
-                        if (this->GetCompare()(value, *hint)) // value < hint
-                            return storage.insert(hint, std::forward<T>(value));
+                        if (comp(value, *hint)) // value < hint
+                            return storage.insert(hint, std::forward<V>(value));
                         else { // value >= hint
                             first = hint;
                             last = cend();
@@ -312,7 +329,7 @@ namespace Ubpa::details {
                     }
                 }
                 else { // hint == end()
-                    storage.push_back(std::forward<T>(value));
+                    storage.push_back(std::forward<V>(value));
                     return std::prev(end());
                 }
             }
@@ -321,13 +338,13 @@ namespace Ubpa::details {
                 last = hint;
             }
 
-            auto lb = std::lower_bound(first, last, value, this->GetCompare()); // value <= lb
+            auto lb = std::lower_bound(first, last, value, comp); // value <= lb
 
             if constexpr (is_multi)
-                return storage.insert(lb, std::forward<T>(value));
+                return storage.insert(lb, std::forward<V>(value));
             else {
-                if (lb == end() || this->GetCompare()(value, *lb)) // value < lb
-                    return storage.insert(lb, std::forward<T>(value));
+                if (lb == end() || comp(value, *lb)) // value < lb
+                    return storage.insert(lb, std::forward<V>(value));
                 else
                     return begin() + std::distance(cbegin(), lb); // value == lb
             }
@@ -343,11 +360,11 @@ namespace Ubpa::details {
             return emplace_hint_impl(hint, value_type(std::forward<Arg>(arg), std::forward<Args>(args)...));
         }
         
-        template<typename T> requires std::is_same<value_type, std::remove_cvref_t<T>>::value
-        std::pair<iterator, bool> emplace_impl(T&& value) {
+        template<typename V> requires std::is_same<value_type, std::remove_cvref_t<V>>::value
+        std::pair<iterator, bool> emplace_impl(V&& value) {
             auto lb = lower_bound(value); // key <= lb
             if (lb == end() || this->GetCompare()(value, *lb)) // key < lb
-                return { storage.insert(lb, std::forward<T>(value)), true };
+                return { storage.insert(lb, std::forward<V>(value)), true };
             else
                 return { lb, false }; // key == lb
         }
