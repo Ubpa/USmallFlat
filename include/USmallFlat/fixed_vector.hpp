@@ -494,8 +494,8 @@ namespace Ubpa {
             std::rotate(myfirst + whereoff, myfirst + oldsize, end());
         }
 
-        template<typename T>
-        static constexpr size_type conver_size(const T& s) noexcept {
+        template<typename S>
+        static constexpr size_type conver_size(const S& s) noexcept {
             assert(s <= N);
             return static_cast<size_type>(s);
         }

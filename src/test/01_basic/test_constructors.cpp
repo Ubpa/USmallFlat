@@ -48,12 +48,12 @@ TEST_CASE("Move construct a small vector of chars" * test_suite("constructors"))
 TEST_CASE("Construct a small vector of bools from initializer list" * test_suite("constructors")) {
   small_vector<uint8_t, 5> foo{1, 0, 1, 0, 1, 1, 1, 1};
   REQUIRE(foo.size() == 8);
-  REQUIRE(foo[0] == true);
-  REQUIRE(foo[1] == false);
-  REQUIRE(foo[2] == true);
-  REQUIRE(foo[3] == false);
-  REQUIRE(foo[4] == true);
-  REQUIRE(foo[5] == true);
-  REQUIRE(foo[6] == true);
-  REQUIRE(foo[7] == true);
+  REQUIRE(foo[0] == static_cast<uint8_t>(true));
+  REQUIRE(foo[1] == static_cast<uint8_t>(false));
+  REQUIRE(foo[2] == static_cast<uint8_t>(true));
+  REQUIRE(foo[3] == static_cast<uint8_t>(false));
+  REQUIRE(foo[4] == static_cast<uint8_t>(true));
+  REQUIRE(foo[5] == static_cast<uint8_t>(true));
+  REQUIRE(foo[6] == static_cast<uint8_t>(true));
+  REQUIRE(foo[7] == static_cast<uint8_t>(true));
 }
