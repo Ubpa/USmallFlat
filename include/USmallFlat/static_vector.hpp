@@ -15,7 +15,7 @@
 
 namespace Ubpa::details {
     template <std::size_t N>
-    using fixed_vector_size_type
+    using static_vector_size_type
         = std::conditional_t<(N < std::numeric_limits<uint8_t>::max()), std::uint8_t,
         std::conditional_t<(N < std::numeric_limits<uint16_t>::max()), std::uint16_t,
         std::conditional_t<(N < std::numeric_limits<uint32_t>::max()), std::uint32_t,
@@ -25,14 +25,14 @@ namespace Ubpa::details {
 
 namespace Ubpa {
     template <class T, std::size_t N = 16>
-    class fixed_vector {
+    class static_vector {
     public:
         //////////////////
         // Member types //
         //////////////////
 
         using value_type = T;
-        using size_type = details::fixed_vector_size_type<N>;
+        using size_type = details::static_vector_size_type<N>;
         using difference_type = std::ptrdiff_t;
         using reference = value_type&;
         using const_reference = const value_type&;
@@ -47,38 +47,38 @@ namespace Ubpa {
         // Member functions //
         //////////////////////
 
-        fixed_vector() noexcept : size_{ 0 } {}
+        static_vector() noexcept : size_{ 0 } {}
 
-        explicit fixed_vector(size_type count) : size_{ count } {
+        explicit static_vector(size_type count) : size_{ count } {
             assert(count <= N);
             std::uninitialized_value_construct(begin(), end());
         }
 
-        fixed_vector(size_type count, const value_type& value) : size_{ count } {
+        static_vector(size_type count, const value_type& value) : size_{ count } {
             assert(count <= N);
             std::uninitialized_fill(begin(), end(), value);
         }
 
-        fixed_vector(const fixed_vector& other) : size_{ other.size_ } {
+        static_vector(const static_vector& other) : size_{ other.size_ } {
             std::uninitialized_copy(other.begin(), other.end(), begin());
         }
 
-        fixed_vector(fixed_vector&& other) noexcept : size_{ other.size_ } {
+        static_vector(static_vector&& other) noexcept : size_{ other.size_ } {
             std::uninitialized_move(other.begin(), other.end(), begin());
             other.clear();
         }
 
-        fixed_vector(std::initializer_list<value_type> ilist) : size_{ static_cast<size_type>(ilist.size()) } {
+        static_vector(std::initializer_list<value_type> ilist) : size_{ static_cast<size_type>(ilist.size()) } {
             assert(ilist.size() <= N);
             std::uninitialized_copy(ilist.begin(), ilist.end(), begin());
         }
 
         template<typename Iter> requires std::input_iterator<Iter>
-        fixed_vector(Iter first, Iter last) : fixed_vector(first, last, typename std::iterator_traits<Iter>::iterator_category{}) {}
+        static_vector(Iter first, Iter last) : static_vector(first, last, typename std::iterator_traits<Iter>::iterator_category{}) {}
 
-        ~fixed_vector() { std::destroy(begin(), end()); }
+        ~static_vector() { std::destroy(begin(), end()); }
 
-        fixed_vector& operator=(const fixed_vector& rhs) {
+        static_vector& operator=(const static_vector& rhs) {
             if (this != &rhs) {
                 if (size_ > rhs.size_) {
                     std::destroy(begin() + rhs.size_, end());
@@ -98,7 +98,7 @@ namespace Ubpa {
             return *this;
         }
 
-        fixed_vector& operator=(fixed_vector&& rhs) noexcept {
+        static_vector& operator=(static_vector&& rhs) noexcept {
             if (this != &rhs) {
                 if (size_ > rhs.size_) {
                     std::destroy(begin() + rhs.size_, end());
@@ -119,7 +119,7 @@ namespace Ubpa {
             return *this;
         }
 
-        fixed_vector& operator=(std::initializer_list<value_type> rhs) {
+        static_vector& operator=(std::initializer_list<value_type> rhs) {
             assert(rhs.size() <= N);
             const size_type rhs_size = static_cast<size_type>(rhs.size());
             if (size_ > rhs_size) {
@@ -420,15 +420,15 @@ namespace Ubpa {
         }
 
     private:
-        [[noreturn]] void throw_out_of_range() const { throw std::out_of_range("invalid fixed_vector subscript"); }
+        [[noreturn]] void throw_out_of_range() const { throw std::out_of_range("invalid static_vector subscript"); }
 
         template<typename Iter> requires std::input_iterator<Iter>
-        fixed_vector(Iter first, Iter last, std::input_iterator_tag) {
+        static_vector(Iter first, Iter last, std::input_iterator_tag) {
             for (; first != last; ++first)
                 emplace_back(*first);
         }
         template<typename Iter> requires std::input_iterator<Iter>
-        fixed_vector(Iter first, Iter last, std::forward_iterator_tag) {
+        static_vector(Iter first, Iter last, std::forward_iterator_tag) {
             auto mylast = std::uninitialized_copy(first, last, begin());
             size_ = conver_size(static_cast<size_t>(mylast - begin()));
         }
@@ -540,32 +540,32 @@ namespace Ubpa {
     };
 
     template<typename T, std::size_t N>
-    bool operator==(const fixed_vector<T, N>& lhs, const fixed_vector<T, N>& rhs) {
+    bool operator==(const static_vector<T, N>& lhs, const static_vector<T, N>& rhs) {
         return lhs.size() == rhs.size() && std::equal(lhs.begin(), lhs.end(), rhs.begin());
     }
 
     template<typename T, std::size_t N>
-    bool operator<(const fixed_vector<T, N>& lhs, const fixed_vector<T, N>& rhs) {
+    bool operator<(const static_vector<T, N>& lhs, const static_vector<T, N>& rhs) {
         return std::lexicographical_compare(lhs.begin(), lhs.end(), rhs.begin(), rhs.end());
     }
 
     template<typename T, std::size_t N>
-    bool operator!=(const fixed_vector<T, N>& lhs, const fixed_vector<T, N>& rhs) {
+    bool operator!=(const static_vector<T, N>& lhs, const static_vector<T, N>& rhs) {
         return !(lhs == rhs);
     }
 
     template<typename T, std::size_t N>
-    bool operator>(const fixed_vector<T, N>& lhs, const fixed_vector<T, N>& rhs) {
+    bool operator>(const static_vector<T, N>& lhs, const static_vector<T, N>& rhs) {
         return rhs < lhs;
     }
 
     template<typename T, std::size_t N>
-    bool operator<=(const fixed_vector<T, N>& lhs, const fixed_vector<T, N>& rhs) {
+    bool operator<=(const static_vector<T, N>& lhs, const static_vector<T, N>& rhs) {
         return !(rhs < lhs);
     }
 
     template<typename T, std::size_t N>
-    bool operator>=(const fixed_vector<T, N>& lhs, const fixed_vector<T, N>& rhs) {
+    bool operator>=(const static_vector<T, N>& lhs, const static_vector<T, N>& rhs) {
         return !(lhs < rhs);
     }
 }

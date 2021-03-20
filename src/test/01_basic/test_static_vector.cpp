@@ -1,67 +1,67 @@
 #include "doctest.hpp"
-#include <USmallFlat/fixed_vector.hpp>
+#include <USmallFlat/static_vector.hpp>
 using doctest::test_suite;
 using namespace Ubpa;
 #include <string>
 
-TEST_CASE("fixed vector" * test_suite("all")) {
+TEST_CASE("static vector" * test_suite("all")) {
   //////////////////////
   // Member functions //
   //////////////////////
   {
-    fixed_vector<int, 5> v;
+    static_vector<int, 5> v;
     REQUIRE(v.empty());
   }
   {
-    fixed_vector<int, 5> v(2);
+    static_vector<int, 5> v(2);
     REQUIRE(v.size() == 2);
     REQUIRE(v[0] == 0);
     REQUIRE(v[1] == 0);
   }
   {
-    fixed_vector<int, 5> v(2,3);
+    static_vector<int, 5> v(2,3);
     REQUIRE(v.size() == 2);
     REQUIRE(v[0] == 3);
     REQUIRE(v[1] == 3);
   }
   {
-    fixed_vector<int, 5> v(2, 3);
+    static_vector<int, 5> v(2, 3);
     REQUIRE(v.size() == 2);
     REQUIRE(v[0] == 3);
     REQUIRE(v[1] == 3);
   }
   {
-    fixed_vector<int, 5> v(2, 3);
-    fixed_vector<int, 5> w(v);
+    static_vector<int, 5> v(2, 3);
+    static_vector<int, 5> w(v);
     REQUIRE(w.size() == 2);
     REQUIRE(w[0] == 3);
     REQUIRE(w[1] == 3);
   }
   {
-    fixed_vector<int, 5> v(2, 3);
-    fixed_vector<int, 5> w(std::move(v));
+    static_vector<int, 5> v(2, 3);
+    static_vector<int, 5> w(std::move(v));
     REQUIRE(w.size() == 2);
     REQUIRE(w[0] == 3);
     REQUIRE(w[1] == 3);
   }
   {
-    fixed_vector<int, 5> v(2, 3);
-    fixed_vector<int, 5> w(std::move(v));
+    static_vector<int, 5> v(2, 3);
+    static_vector<int, 5> w(std::move(v));
     REQUIRE(v.empty());
     REQUIRE(w.size() == 2);
     REQUIRE(w[0] == 3);
     REQUIRE(w[1] == 3);
   }
   {
-    fixed_vector<int, 5> v{1,2,3};
+    static_vector<int, 5> v{1,2,3};
     REQUIRE(v.size() == 3);
     REQUIRE(v[0] == 1);
     REQUIRE(v[1] == 2);
     REQUIRE(v[2] == 3);
   }
   {
-    fixed_vector<int, 5> v{1,2,3};
-    fixed_vector<int, 5> w{4,3,2,1};
+    static_vector<int, 5> v{1,2,3};
+    static_vector<int, 5> w{4,3,2,1};
     v = w;
     REQUIRE(v.size() == 4);
     REQUIRE(v[0] == 4);
@@ -70,8 +70,8 @@ TEST_CASE("fixed vector" * test_suite("all")) {
     REQUIRE(v[3] == 1);
   }
   {
-    fixed_vector<int, 5> v{1,2,3};
-    fixed_vector<int, 5> w{4,3,2,1};
+    static_vector<int, 5> v{1,2,3};
+    static_vector<int, 5> w{4,3,2,1};
     v = std::move(w);
     REQUIRE(w.empty());
     REQUIRE(v.size() == 4);
@@ -81,7 +81,7 @@ TEST_CASE("fixed vector" * test_suite("all")) {
     REQUIRE(v[3] == 1);
   }
   {
-    fixed_vector<int, 5> v{1,2,3};
+    static_vector<int, 5> v{1,2,3};
     v = { 4,3,2,1 };
     REQUIRE(v.size() == 4);
     REQUIRE(v[0] == 4);
@@ -90,17 +90,17 @@ TEST_CASE("fixed vector" * test_suite("all")) {
     REQUIRE(v[3] == 1);
   }
   {
-    fixed_vector<int, 5> v{1,2,3};
+    static_vector<int, 5> v{1,2,3};
     REQUIRE(v.at(2) == 3);
     REQUIRE_THROWS(v.at(3));
   }
   {
-    fixed_vector<int, 5> v{1,2,3};
+    static_vector<int, 5> v{1,2,3};
     v.clear();
     REQUIRE(v.empty());
   }
   {
-    fixed_vector<int, 5> v{1,2,3,4};
+    static_vector<int, 5> v{1,2,3,4};
     v.push_back(5);
     REQUIRE(v[4] == 5);
     v.pop_back();
@@ -115,8 +115,8 @@ TEST_CASE("fixed vector" * test_suite("all")) {
     REQUIRE(v[3] == 5);
   }
   {
-    fixed_vector<int, 5> v{ 1,2 };
-    fixed_vector<int, 5> w{ 3,2,1 };
+    static_vector<int, 5> v{ 1,2 };
+    static_vector<int, 5> w{ 3,2,1 };
     std::swap(v, w);
     REQUIRE(v.size() == 3);
     REQUIRE(v[0] == 3);
@@ -127,7 +127,7 @@ TEST_CASE("fixed vector" * test_suite("all")) {
     REQUIRE(w[1] == 2);
   }
   {
-    fixed_vector<int, 5> v{1,2};
+    static_vector<int, 5> v{1,2};
     v.insert(v.begin() + 1, 4);
     v.insert(v.begin() + 1, 2, 5);
     REQUIRE(v.size() == 5);
@@ -138,8 +138,8 @@ TEST_CASE("fixed vector" * test_suite("all")) {
     REQUIRE(v[4] == 2);
   }
   {
-    fixed_vector<int, 5> v{1,2};
-    fixed_vector<int, 5> w{5,5,4};
+    static_vector<int, 5> v{1,2};
+    static_vector<int, 5> w{5,5,4};
     v.insert(v.begin() + 1, w.begin(), w.end());
     REQUIRE(v.size() == 5);
     REQUIRE(v[0] == 1);
@@ -149,20 +149,20 @@ TEST_CASE("fixed vector" * test_suite("all")) {
     REQUIRE(v[4] == 2);
   }
   {
-    fixed_vector<int, 5> v;
+    static_vector<int, 5> v;
     v.assign(3, 2);
     REQUIRE(v.size() == 3);
     REQUIRE(v[0] == 2);
     REQUIRE(v[1] == 2);
     REQUIRE(v[2] == 2);
-    fixed_vector<int, 5> w{ 1,2 };
+    static_vector<int, 5> w{ 1,2 };
     v.assign(w.begin(), w.end());
     REQUIRE(v.size() == 2);
     REQUIRE(v[0] == 1);
     REQUIRE(v[1] == 2);
   }
   {
-    fixed_vector<int, 5> v{1,2,3,4,5};
+    static_vector<int, 5> v{1,2,3,4,5};
     v.erase(v.begin() + 1, v.begin() + 3);
     REQUIRE(v.size() == 3);
     REQUIRE(v[0] == 1);
@@ -170,8 +170,8 @@ TEST_CASE("fixed vector" * test_suite("all")) {
     REQUIRE(v[2] == 5);
   }
   {
-    fixed_vector<int, 5> v{1,2,3,4,5};
-    fixed_vector<int, 5> w{v.rbegin(), v.rend()};
-    REQUIRE(w == fixed_vector<int, 5>{ 5,4,3,2,1 });
+    static_vector<int, 5> v{1,2,3,4,5};
+    static_vector<int, 5> w{v.rbegin(), v.rend()};
+    REQUIRE(w == static_vector<int, 5>{ 5,4,3,2,1 });
   }
 }

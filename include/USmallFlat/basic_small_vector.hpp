@@ -1,6 +1,6 @@
 #pragma once
 
-#include "fixed_vector.hpp"
+#include "static_vector.hpp"
 
 #include <vector>
 #include <iterator>
@@ -9,7 +9,7 @@
 namespace Ubpa {
     template <template<typename>class Vector, typename T, std::size_t N = 16>
     class basic_small_vector {
-        using stack_type = fixed_vector<T, N>;
+        using stack_type = static_vector<T, N>;
         using heap_type = Vector<T>;
     public:
         //////////////////
