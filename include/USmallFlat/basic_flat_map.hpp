@@ -14,19 +14,12 @@ namespace Ubpa {
         // Member types //
         //////////////////
 
-        using key_type = typename mybase::key_type;
-        using mapped_type = typename mybase::mapped_type;
-        using value_type = typename mybase::value_type;
-        using size_type = typename mybase::size_type;
-        using difference_type = typename mybase::difference_type;
-        using key_compare = typename mybase::key_compare;
+        using typename mybase::key_type;
+        using typename mybase::mapped_type;
+        using typename mybase::value_type;
 
-        using container_type = typename mybase::container_type;
-
-        using iterator = typename mybase::iterator;
-        using const_iterator = typename mybase::const_iterator;
-        using reverse_iterator = typename mybase::reverse_iterator;
-        using const_reverse_iterator = typename mybase::const_reverse_iterator;
+        using typename mybase::iterator;
+        using typename mybase::const_iterator;
 
         //////////////////////
         // Member functions //

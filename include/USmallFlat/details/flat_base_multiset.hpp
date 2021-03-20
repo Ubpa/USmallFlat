@@ -125,11 +125,14 @@ namespace Ubpa::details {
         // Element access
         ///////////////////
 
-        value_type* data() noexcept { return storage.data(); }
-        const value_type* data() const noexcept { return storage.data(); }
+        pointer data() noexcept { return storage.data(); }
+        const_pointer data() const noexcept { return storage.data(); }
 
-        reference front() { return *storage.begin(); }
-        const value_type& front() const { return *storage.begin(); }
+        reference front() { return storage.front(); }
+        const_reference front() const { return storage.front(); }
+
+        reference back() { return storage.back(); }
+        const_reference back() const { return storage.back(); }
 
         //
         // Capacity
@@ -140,6 +143,10 @@ namespace Ubpa::details {
         size_type size() const noexcept { return storage.size(); }
 
         size_type max_size() const noexcept { return storage.max_size(); }
+
+        size_type capacity() const noexcept { return storage.capacity(); }
+
+        void shrink_to_fit() { return storage.shrink_to_fit(); }
 
         //
         // Modifiers

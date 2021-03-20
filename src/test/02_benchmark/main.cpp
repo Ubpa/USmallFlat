@@ -6,14 +6,20 @@
 #include <set>
 #include <unordered_map>
 
+void init_small_vector(void* ptr) {
+	new(ptr)Ubpa::small_vector<std::size_t, 16>();
+}
+void init_vector(void* ptr) {
+	new(ptr)std::vector<std::size_t>();
+}
+
 int main() {
-	std::vector<double> rates;
 	std::size_t cnt, index;
 	std::size_t rst = 0;
 	std::cin >> cnt >> index;
 	assert(index < cnt);
-	
 	{
+		std::vector<double> rates;
 		for (std::size_t i = 0; i < 100; i++) {
 			auto t0 = std::chrono::high_resolution_clock::now();
 			for (std::size_t j = 0; j < 10000; j++) {
@@ -42,6 +48,7 @@ int main() {
 		std::cout << sum << std::endl;
 	}
 	{
+		std::vector<double> rates;
 		for (std::size_t i = 0; i < 100; i++) {
 			auto t0 = std::chrono::high_resolution_clock::now();
 			{
@@ -72,6 +79,7 @@ int main() {
 		std::cout << sum << std::endl;
 	}
 	{
+		std::vector<double> rates;
 		for (std::size_t i = 0; i < 100; i++) {
 			auto t0 = std::chrono::high_resolution_clock::now();
 			{
@@ -102,6 +110,7 @@ int main() {
 		std::cout << sum << std::endl;
 	}
 	{
+		std::vector<double> rates;
 		for (std::size_t i = 0; i < 100; i++) {
 			auto t0 = std::chrono::high_resolution_clock::now();
 			{
@@ -133,4 +142,5 @@ int main() {
 
 		std::cout << sum << std::endl;
 	}
+	std::cout << rst << std::endl;
 }

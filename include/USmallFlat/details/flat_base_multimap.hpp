@@ -158,12 +158,22 @@ namespace Ubpa::details {
         const_reverse_iterator crend() const noexcept { return cast_iterator(mybase::crend()); }
 
         //
+        // Element access
+        ///////////////////
+
+        using mybase::data;
+        using mybase::front;
+        using mybase::back;
+
+        //
         // Capacity
         /////////////
 
         using mybase::empty;
         using mybase::size;
         using mybase::max_size;
+        using mybase::capacity;
+        using mybase::shrink_to_fit;
 
         //
         // Modifiers
