@@ -1,6 +1,10 @@
 # USmallFlat
 
-Ubpa small flat containers
+[![repo-size](https://img.shields.io/github/languages/code-size/Ubpa/USmallFlat?style=flat)](https://github.com/Ubpa/USmallFlat/archive/master.zip) [![tag](https://img.shields.io/github/v/tag/Ubpa/USmallFlat)](https://github.com/Ubpa/USmallFlat/tags) [![license](https://img.shields.io/github/license/Ubpa/USmallFlat)](LICENSE) 
+
+Ubpa small flat containers based on C++20
+
+## Containers
 
 - [`basic_flat_map`](include/USmallFlat/basic_flat_map.hpp)
 - [`basic_flat_multimap`](include/USmallFlat/basic_flat_multimap.hpp)
@@ -30,4 +34,20 @@ Ubpa small flat containers
 - [`pmr::small_flat_multiset`](include/USmallFlat/pmr/small_flat_multiset.hpp)
 - [`pmr::small_flat_set`](include/USmallFlat/pmr/small_flat_set.hpp)
 - [`pmr::small_vector`](include/USmallFlat/pmr/small_vector.hpp)
+
+## Compiler compatibility
+
+- Clang/LLVM >= 10.0
+- GCC >= 10.0
+- MSVC >= 1926
+
+> Tested platforms:
+>
+> - Windows 10: VS2019 16.8.5
+>
+> - Ubuntu 20: GCC 10.2, Clang 11.0
+>
+> - MacOS 11.0 : GCC 10.2
+>
+>   > AppleClang 12 and Clang 11 is not supported
 
