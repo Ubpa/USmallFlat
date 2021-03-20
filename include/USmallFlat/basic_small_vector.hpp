@@ -269,7 +269,7 @@ namespace Ubpa {
                 }
                 else {
                     stack_.resize(static_cast<typename stack_type::size_type>(count), value);
-                    last_ = first_ - count;
+                    last_ = first_ + count;
                 }
             }
             else {
