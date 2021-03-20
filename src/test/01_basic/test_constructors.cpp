@@ -9,6 +9,11 @@ TEST_CASE("Default construct a small vector of ints" * test_suite("constructors"
   REQUIRE(vec.size() == 0);
 }
 
+TEST_CASE("Class template argument deduction" * test_suite("constructors")) {
+    small_vector vec{ 1,2,3,4 };
+    REQUIRE(vec == small_vector<int>{1, 2, 3, 4});
+}
+
 TEST_CASE("Fill construct a small vector of floats" * test_suite("constructors")) {
   small_vector<float, 10> vec(20, 1.0);
   REQUIRE(vec.size() == 20);

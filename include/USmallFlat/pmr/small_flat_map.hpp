@@ -6,6 +6,13 @@
 
 namespace Ubpa::pmr {
     template<typename Key, typename T, std::size_t N = 16, typename Compare = std::less<Key>>
-    using small_flat_map = basic_flat_map<Ubpa::pmr::details::small_vector_bind<N>::template Ttype,
-        Key, T, Compare>;
+    class small_flat_map : public basic_flat_map<details::small_vector_bind<N>::template Ttype, Key, T, Compare> {
+        using mybase = basic_flat_map<details::small_vector_bind<N>::template Ttype, Key, T, Compare>;
+    public:
+        using mybase::mybase;
+        using typename mybase::value_type;
+
+        small_flat_map(std::initializer_list<value_type> ilist, const Compare& comp = Compare())
+            : mybase(ilist, comp) {}
+    };
 }

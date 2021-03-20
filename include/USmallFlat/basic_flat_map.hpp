@@ -26,7 +26,6 @@ namespace Ubpa {
         //////////////////////
 
         using mybase::mybase;
-        using mybase::operator=;
 
         //
         // Element access

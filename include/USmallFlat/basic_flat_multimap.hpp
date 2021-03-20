@@ -11,6 +11,5 @@ namespace Ubpa {
         using mybase = details::flat_base_multimap<basic_flat_multimap<Vector, Key, T, Compare>, true, Vector, Key, T, Compare>;
     public:
         using mybase::mybase;
-        using mybase::operator=;
     };
 }
