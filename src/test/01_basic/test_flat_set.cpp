@@ -28,9 +28,11 @@ TEST_CASE("static flat set" * test_suite("all")) {
   {
     static_flat_set<int, 5> v;
     v.insert(1);
-    v.insert(2);
+    v.insert(4);
     v.insert(1);
-    REQUIRE(v == static_flat_set<int, 5>{1, 2});
+    v.insert(3);
+    v.insert(2);
+    REQUIRE(v == static_flat_set<int, 5>{1, 2, 3, 4});
   }
   {
     static_flat_set<int, 5> v{1,2,3,1,2};

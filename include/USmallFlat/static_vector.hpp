@@ -281,23 +281,33 @@ namespace Ubpa {
             if (affected_elements == 0)
                 ;
             else if (affected_elements < count) {
-                // 1. pos -> end
-                if (pos != last)
-                    std::uninitialized_move(last - count, last, last);
-
-                // 2. [pos, last-count) --move--> [pos+count, last)
-                std::move(posptr, last - count, posptr + count);
-
-                // 3. destroy [pos, pos+count)
-                std::destroy(posptr, posptr + count);
-            }
-            else {
                 // [pos, last) --move--> [last, ...)
                 std::uninitialized_move(posptr, last, last);
                 std::destroy(posptr, last);
             }
+            else {
+                if constexpr (std::is_trivially_move_assignable_v<value_type>) {
+                    if constexpr (std::is_trivially_move_constructible_v<value_type>)
+                        // 1. + 2. [pos, last) --move--> [pos+count, last+count)
+                        std::memmove(posptr + count, posptr, (last - posptr) * sizeof(value_type));
+                    else {
+                        // 1. [last-count, last) -> [last, last+count)
+                        std::uninitialized_move(last - count, last, last);
+                        // 2. [pos, last-count) --move--> [pos+count, last)
+                        std::memmove(posptr + count, posptr, (last - posptr - count) * sizeof(value_type));
+                    }
+                }
+                else {
+                    // 1. [last-count, last) -> [last, last+count)
+                    std::uninitialized_move(last - count, last, last);
+                    // 2. [pos, last-count) --move--> [pos+count, last)
+                    for (auto cursor = last - count - 1; cursor >= pos; --cursor)
+                        *(cursor + count) = std::move(*cursor);
+                }
 
-            // 4. copy ctor at pos
+                std::destroy(posptr, posptr + count);
+            }
+
             std::uninitialized_fill(posptr, posptr + count, value);
 
             size_ += count;
@@ -323,10 +333,25 @@ namespace Ubpa {
             assert(begin() <= pos && pos <= last);
 
             if (posptr != last) {
-                // 1. pos -> end
-                new(last)value_type{ *(last - 1) };
-                // 2. [pos, last-1) --move--> [pos+1, last)
-                std::move(posptr, last - 1, posptr + 1);
+                if constexpr (std::is_trivially_move_assignable_v<value_type>) {
+                    if constexpr (std::is_trivially_move_constructible_v<value_type>)
+                        // 1. + 2. [pos, last) --move--> [pos+1, last+1)
+                        std::memmove(posptr + 1, posptr, (last - posptr) * sizeof(value_type));
+                    else {
+                        // 1. pos -> last
+                        new(last)value_type{ std::move(*(last - 1)) };
+                        // 2. [pos, last-1) --move--> [pos+1, last)
+                        std::memmove(posptr + 1, posptr, (last - posptr - 1) * sizeof(value_type));
+                    }
+                }
+                else {
+                    // 1. pos -> last
+                    new(last)value_type{ std::move(*(last - 1)) };
+                    // 2. [pos, last-1) --move--> [pos+1, last)
+                    for (auto cursor = last - 2; cursor >= pos; --cursor)
+                        *(cursor + 1) = std::move(*cursor);
+                }
+                
                 // 3. destroy
                 if constexpr (!std::is_trivially_destructible_v<value_type>)
                     posptr->~value_type();
@@ -519,8 +544,20 @@ namespace Ubpa {
             const auto affected_elements = static_cast<size_type>(oldlast - posptr);
 
             if (count < affected_elements) { // some affected elements must be assigned
-                /*mylast = */std::uninitialized_move(oldlast - count, oldlast, oldlast);
-                std::move(posptr, oldlast - count, oldlast);
+                if constexpr (std::is_trivially_move_assignable_v<value_type>) {
+                    if constexpr (std::is_trivially_move_constructible_v<value_type>)
+                        std::memmove(posptr + count, posptr, affected_elements * sizeof(value_type));
+                    else {
+                        /*mylast = */std::uninitialized_move(oldlast - count, oldlast, oldlast);
+                        std::memmove(posptr + count, posptr, (affected_elements - count) * sizeof(value_type));
+                    }
+                }
+                else {
+                    /*mylast = */std::uninitialized_move(oldlast - count, oldlast, oldlast);
+                    std::move(posptr, oldlast - count, posptr + count);
+                    for (auto cursor = oldlast - count - 1; cursor >= posptr; --cursor)
+                        *(cursor + count) = std::move(*cursor);
+                }
                 std::destroy(posptr, posptr + count);
                 std::uninitialized_copy(first, last, posptr);
             }

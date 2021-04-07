@@ -39,36 +39,66 @@ namespace Ubpa::details {
         typename T::is_transparent;
     };
 
-    template<typename Value, typename Compare,
+    template<typename Key, typename T, typename Compare,
         bool value_as_base = std::is_empty_v<Compare> && !std::is_final_v<Compare>,
         bool = contain_is_transparent<Compare>>
     class flat_base_multimap_comp : public flat_base_multimap_comp_storage<Compare, value_as_base> {
         using storage = flat_base_multimap_comp_storage<Compare, value_as_base>;
+        using MapValue = std::pair<const Key, T>;
+        using SetValue = std::pair<Key, T>;
     public:
         using storage::storage;
 
-        template <class Ty1, class Ty2>
-        constexpr decltype(auto) operator()(Ty1&& lhs, Ty2&& rhs) const
-            noexcept(noexcept(static_cast<Ty1&&>(lhs) < static_cast<Ty2&&>(rhs))) // strengthened
-        { return this->GetCompare()(static_cast<Ty1&&>(lhs), static_cast<Ty2&&>(rhs)); }
+        constexpr bool operator()(const MapValue& lhs, const MapValue& rhs) const {
+            return this->GetCompare()(std::get<0>(lhs), std::get<0>(rhs));
+        }
+        constexpr bool operator()(const SetValue& lhs, const SetValue& rhs) const {
+            return this->GetCompare()(std::get<0>(lhs), std::get<0>(rhs));
+        }
+        template <class K>
+        constexpr bool operator()(const K& lhs, const MapValue& rhs) const {
+            return this->GetCompare()(lhs, std::get<0>(rhs));
+        }
+        template <class K>
+        constexpr bool operator()(const MapValue& lhs, const K& rhs) const {
+            return this->GetCompare()(std::get<0>(lhs), rhs);
+        }
+        template <class K>
+        constexpr bool operator()(const K& lhs, const SetValue& rhs) const {
+            return this->GetCompare()(lhs, std::get<0>(rhs));
+        }
+        template <class K>
+        constexpr bool operator()(const SetValue& lhs, const K& rhs) const {
+            return this->GetCompare()(std::get<0>(lhs), rhs);
+        }
 
         using is_transparent = int;
     };
 
-    template<typename Value, typename Compare, bool value_as_base>
-    class flat_base_multimap_comp<Value, Compare, value_as_base, false> : public flat_base_multimap_comp_storage<Compare, value_as_base> {
+    template<typename Key, typename T, typename Compare, bool value_as_base>
+    class flat_base_multimap_comp<Key, T, Compare, value_as_base, false> : public flat_base_multimap_comp_storage<Compare, value_as_base> {
         using storage = flat_base_multimap_comp_storage<Compare, value_as_base>;
-        using Key = std::remove_const_t<std::tuple_element_t<0, Value>>;
+        using MapValue = std::pair<const Key, T>;
+        using SetValue = std::pair<Key, T>;
     public:
         using storage::storage;
 
-        constexpr bool operator()(const Value& lhs, const Value& rhs) const {
+        constexpr bool operator()(const MapValue& lhs, const MapValue& rhs) const {
             return this->GetCompare()(std::get<0>(lhs), std::get<0>(rhs));
         }
-        constexpr bool operator()(const Key& lhs, const Value& rhs) const {
+        constexpr bool operator()(const SetValue& lhs, const SetValue& rhs) const {
+            return this->GetCompare()(std::get<0>(lhs), std::get<0>(rhs));
+        }
+        constexpr bool operator()(const Key& lhs, const MapValue& rhs) const {
             return this->GetCompare()(lhs, std::get<0>(rhs));
         }
-        constexpr bool operator()(const Value& lhs, const Key& rhs) const {
+        constexpr bool operator()(const MapValue& lhs, const Key& rhs) const {
+            return this->GetCompare()(std::get<0>(lhs), rhs);
+        }
+        constexpr bool operator()(const Key& lhs, const SetValue& rhs) const {
+            return this->GetCompare()(lhs, std::get<0>(rhs));
+        }
+        constexpr bool operator()(const SetValue& lhs, const Key& rhs) const {
             return this->GetCompare()(std::get<0>(lhs), rhs);
         }
 
@@ -79,8 +109,8 @@ namespace Ubpa::details {
     // - Vector<std::pair<const Key, T>>::iterator <=> Vector<std::pair<Key, T>>::iterator
     // - Vector<std::pair<const Key, T>>::const_iterator <=> Vector<std::pair<Key, T>>::const_iterator
     template <typename Impl, bool IsMulti, template<typename>class Vector, typename Key, typename T, typename Compare>
-    class flat_base_multimap : protected flat_base_multiset<Impl, IsMulti, Vector, std::pair<Key, T>, flat_base_multimap_comp<std::pair<Key, T>, Compare>> {
-        using mybase = flat_base_multiset<Impl, IsMulti, Vector, std::pair<Key, T>, flat_base_multimap_comp<std::pair<Key, T>, Compare>>;
+    class flat_base_multimap : protected flat_base_multiset<Impl, IsMulti, Vector, std::pair<Key, T>, flat_base_multimap_comp<Key, T, Compare>, Key> {
+        using mybase = flat_base_multiset<Impl, IsMulti, Vector, std::pair<Key, T>, flat_base_multimap_comp<Key, T, Compare>, Key>;
     public:
         //////////////////
         // Member types //
@@ -108,7 +138,7 @@ namespace Ubpa::details {
         // Member functions //
         //////////////////////
 
-        flat_base_multimap() = default;
+        flat_base_multimap() : mybase(Compare()) {}
 
         explicit flat_base_multimap(const container_type& sorted_storage, const Compare& comp = Compare())
             : mybase(sorted_storage, comp) {}
@@ -188,19 +218,27 @@ namespace Ubpa::details {
         template<typename P> requires std::is_constructible_v<value_type, P&&>
         std::pair<iterator, bool> insert(P&& value) { return emplace(std::forward<P>(value)); }
 
-        iterator insert(const_iterator hint, const value_type& value) { return cast_iterator(mybase::insert(hint, value)); }
+        iterator insert(const_iterator hint, const value_type& value) { return cast_iterator(mybase::insert(cast_iterator(hint), value)); }
 
-        iterator insert(const_iterator hint, value_type&& value) { return cast_iterator(mybase::insert(hint, std::move(value))); }
+        iterator insert(const_iterator hint, value_type&& value) { return cast_iterator(mybase::insert(cast_iterator(hint), std::move(value))); }
 
         template<typename P> requires std::is_constructible_v<value_type, P&&>
         std::pair<iterator, bool> insert(const_iterator hint, P&& value) { return emplace_hint(hint, std::forward<P>(value)); }
 
+        // FIXME
         template<typename InputIt>
         void insert(InputIt first, InputIt last) { mybase::insert(first, last); }
 
-        iterator erase(const_iterator pos) { return cast_iterator(mybase::erase(pos)); }
-        iterator erase(iterator pos) { return cast_iterator(mybase::erase(pos)); }
-        iterator erase(const_iterator first, const_iterator last) { return cast_iterator(mybase::erase(first, last)); }
+        template<typename... Args>
+        iterator emplace(Args&&... args) { return cast_iterator(mybase::emplace(std::forward<Args>(args)...).first); }
+
+        template<typename... Args>
+        iterator emplace_hint(const_iterator hint, Args&&... args)
+        { return cast_iterator(mybase::emplace_hint(cast_iterator(hint), std::forward<Args>(args)...)); }
+
+        iterator erase(const_iterator pos) { return cast_iterator(mybase::erase(cast_iterator(pos))); }
+        iterator erase(iterator pos) { return cast_iterator(mybase::erase(cast_iterator(pos))); }
+        iterator erase(const_iterator first, const_iterator last) { return cast_iterator(mybase::erase(cast_iterator(first), cast_iterator(last))); }
         size_type erase(const key_type& key) {
             if constexpr (is_multi) {
                 auto [begin_iter, end_iter] = equal_range(key);
@@ -253,15 +291,15 @@ namespace Ubpa::details {
 
         template<typename K,
             typename Comp_ = Compare, typename = std::enable_if_t<std::is_same_v<Comp_, Compare>, typename Comp_::is_transparent>>
-        size_type count(const K& key) const { return cast_iterator(mybase::count(key)); }
+        size_type count(const K& key) const { return mybase::count(key); }
 
         template<typename K,
             typename Comp_ = Compare, typename = std::enable_if_t<std::is_same_v<Comp_, Compare>, typename Comp_::is_transparent>>
-        bool contains(const K& key) const { return cast_iterator(mybase::contains(key)); }
+        bool contains(const K& key) const { return mybase::contains(key); }
 
         template<typename K,
             typename Comp_ = Compare, typename = std::enable_if_t<std::is_same_v<Comp_, Compare>, typename Comp_::is_transparent>>
-        iterator lower_bound(const K& key) const
+        iterator lower_bound(const K& key)
         { return cast_iterator(mybase::lower_bound(key)); }
 
         template<typename K,
@@ -271,7 +309,7 @@ namespace Ubpa::details {
 
         template<typename K,
             typename Comp_ = Compare, typename = std::enable_if_t<std::is_same_v<Comp_, Compare>, typename Comp_::is_transparent>>
-        iterator upper_bound(const K& key) const
+        iterator upper_bound(const K& key)
         { return cast_iterator(mybase::upper_bound(key)); }
 
         template<typename K,

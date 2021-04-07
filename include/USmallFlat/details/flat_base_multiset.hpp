@@ -30,7 +30,7 @@ namespace Ubpa::details {
         Compare comp;
     };
 
-    template <typename Impl, bool IsMulti, template<typename>class Vector, typename Key, typename Compare>
+    template <typename Impl, bool IsMulti, template<typename>class Vector, typename Key, typename Compare, typename RKey = typename Vector<Key>::value_type>
     class flat_base_multiset : private flat_base_multiset_base<Compare> {
         using mybase = flat_base_multiset_base<Compare>;
     public:
@@ -41,7 +41,7 @@ namespace Ubpa::details {
         static constexpr bool is_multi = IsMulti;
 
         using container_type = Vector<Key>;
-        using key_type = typename container_type::value_type;
+        using key_type = RKey;
         using value_type = typename container_type::value_type;
         using size_type = typename container_type::size_type;
         using difference_type = typename container_type::difference_type;

@@ -107,7 +107,7 @@ namespace Ubpa {
         std::pair<iterator, bool> insert_or_assign_impl(K&& k, M&& m) {
             auto lb = mybase::lower_bound(k); // k <= lb
             if (lb == mybase::end() || mybase::key_comp()(k, *lb)) // k < lb
-                return { mybase::cast_iterator(mybase::storage.insert(lb, value_type(std::forward<K>(k), std::forward<M>(m)))), true };
+                return { mybase::cast_iterator(mybase::storage.insert(mybase::cast_iterator(lb), value_type(std::forward<K>(k), std::forward<M>(m)))), true };
             else { // k == lb
                 lb->second = std::forward<M>(m);
                 return { lb, false };
