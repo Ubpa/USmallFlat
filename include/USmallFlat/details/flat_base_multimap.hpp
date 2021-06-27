@@ -110,6 +110,7 @@ namespace Ubpa::details {
     // - Vector<std::pair<const Key, T>>::const_iterator <=> Vector<std::pair<Key, T>>::const_iterator
     template <typename Impl, bool IsMulti, template<typename>class Vector, typename Key, typename T, typename Compare>
     class flat_base_multimap : protected flat_base_multiset<Impl, IsMulti, Vector, std::pair<Key, T>, flat_base_multimap_comp<Key, T, Compare>, Key> {
+        friend class flat_base_multiset<Impl, IsMulti, Vector, std::pair<Key, T>, flat_base_multimap_comp<Key, T, Compare>, Key>;
         using mybase = flat_base_multiset<Impl, IsMulti, Vector, std::pair<Key, T>, flat_base_multimap_comp<Key, T, Compare>, Key>;
     public:
         //////////////////
