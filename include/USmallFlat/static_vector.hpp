@@ -7,6 +7,7 @@
 #include <concepts>
 #include <type_traits>
 #include <cstring>
+#include <limits>
 
 #ifdef _MSC_VER
 #pragma warning( push )
