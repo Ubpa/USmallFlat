@@ -5,6 +5,7 @@
 #include <vector>
 #include <iterator>
 #include <optional>
+#include <limits>
 
 namespace Ubpa {
     template <template<typename>class Vector, typename T, std::size_t N = 16>
