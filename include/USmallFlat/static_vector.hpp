@@ -48,28 +48,28 @@ namespace Ubpa {
         // Member functions //
         //////////////////////
 
-        static_vector() noexcept : size_{ 0 } {}
+        static_vector() noexcept : m_size{ 0 } {}
 
-        explicit static_vector(size_type count) : size_{ count } {
+        explicit static_vector(size_type count) : m_size{ count } {
             assert(count <= N);
             std::uninitialized_value_construct(begin(), end());
         }
 
-        static_vector(size_type count, const value_type& value) : size_{ count } {
+        static_vector(size_type count, const value_type& value) : m_size{ count } {
             assert(count <= N);
             std::uninitialized_fill(begin(), end(), value);
         }
 
-        static_vector(const static_vector& other) : size_{ other.size_ } {
+        static_vector(const static_vector& other) : m_size{ other.m_size } {
             std::uninitialized_copy(other.begin(), other.end(), begin());
         }
 
-        static_vector(static_vector&& other) noexcept : size_{ other.size_ } {
+        static_vector(static_vector&& other) noexcept : m_size{ other.m_size } {
             std::uninitialized_move(other.begin(), other.end(), begin());
             other.clear();
         }
 
-        static_vector(std::initializer_list<value_type> ilist) : size_{ static_cast<size_type>(ilist.size()) } {
+        static_vector(std::initializer_list<value_type> ilist) : m_size{ static_cast<size_type>(ilist.size()) } {
             assert(ilist.size() <= N);
             std::uninitialized_copy(ilist.begin(), ilist.end(), begin());
         }
@@ -81,40 +81,40 @@ namespace Ubpa {
 
         static_vector& operator=(const static_vector& rhs) {
             if (this != &rhs) {
-                if (size_ > rhs.size_) {
-                    std::destroy(begin() + rhs.size_, end());
+                if (m_size > rhs.m_size) {
+                    std::destroy(begin() + rhs.m_size, end());
                     std::copy(rhs.begin(), rhs.end(), begin());
                 }
                 else {
                     if constexpr (std::is_trivially_copy_assignable_v<value_type> && std::is_trivially_copy_constructible_v<value_type>) {
-                        std::memcpy(&storage_, &rhs.storage_, rhs.size_ * sizeof(value_type));
+                        std::memcpy(&m_storage, &rhs.m_storage, rhs.m_size * sizeof(value_type));
                     }
                     else {
-                        std::copy(rhs.begin(), rhs.begin() + size_, begin());
-                        std::uninitialized_copy(rhs.begin() + size_, rhs.end(), end());
+                        std::copy(rhs.begin(), rhs.begin() + m_size, begin());
+                        std::uninitialized_copy(rhs.begin() + m_size, rhs.end(), end());
                     }
                 }
-                size_ = rhs.size_;
+                m_size = rhs.m_size;
             }
             return *this;
         }
 
         static_vector& operator=(static_vector&& rhs) noexcept {
             if (this != &rhs) {
-                if (size_ > rhs.size_) {
-                    std::destroy(begin() + rhs.size_, end());
+                if (m_size > rhs.m_size) {
+                    std::destroy(begin() + rhs.m_size, end());
                     std::move(rhs.begin(), rhs.end(), begin());
                 }
                 else {
                     if constexpr (std::is_trivially_move_assignable_v<value_type> && std::is_trivially_move_constructible_v<value_type>) {
-                        std::memcpy(&storage_, &rhs.storage_, rhs.size_ * sizeof(value_type));
+                        std::memcpy(&m_storage, &rhs.m_storage, rhs.m_size * sizeof(value_type));
                     }
                     else {
-                        std::copy(rhs.begin(), rhs.begin() + size_, begin());
-                        std::uninitialized_move(rhs.begin() + size_, rhs.end(), end());
+                        std::copy(rhs.begin(), rhs.begin() + m_size, begin());
+                        std::uninitialized_move(rhs.begin() + m_size, rhs.end(), end());
                     }
                 }
-                size_ = rhs.size_;
+                m_size = rhs.m_size;
                 rhs.clear();
             }
             return *this;
@@ -123,20 +123,20 @@ namespace Ubpa {
         static_vector& operator=(std::initializer_list<value_type> rhs) {
             assert(rhs.size() <= N);
             const size_type rhs_size = static_cast<size_type>(rhs.size());
-            if (size_ > rhs_size) {
+            if (m_size > rhs_size) {
                 std::destroy(begin() + rhs_size, end());
                 std::copy(rhs.begin(), rhs.end(), begin());
             }
             else {
                 if constexpr (std::is_trivially_copy_assignable_v<value_type> && std::is_trivially_copy_constructible_v<value_type>) {
-                    std::memcpy(&storage_, rhs.begin(), rhs_size * sizeof(value_type));
+                    std::memcpy(&m_storage, rhs.begin(), rhs_size * sizeof(value_type));
                 }
                 else {
-                    std::copy(rhs.begin(), rhs.begin() + size_, begin());
-                    std::uninitialized_copy(rhs.begin() + size_, rhs.end(), end());
+                    std::copy(rhs.begin(), rhs.begin() + m_size, begin());
+                    std::uninitialized_copy(rhs.begin() + m_size, rhs.end(), end());
                 }
             }
-            size_ = rhs_size;
+            m_size = rhs_size;
             return *this;
         }
 
@@ -146,17 +146,17 @@ namespace Ubpa {
             const pointer myfirst = begin();
             const pointer mylast = end();
 
-            if (count > size_) {
+            if (count > m_size) {
                 std::fill(myfirst, mylast, value);
 
-                std::uninitialized_fill_n(mylast, count - size_, value);
+                std::uninitialized_fill_n(mylast, count - m_size, value);
             }
             else {
                 const pointer newlast = myfirst + count;
                 std::fill(myfirst, newlast, value);
                 std::destroy(newlast, mylast);
             }
-            size_ = count;
+            m_size = count;
         }
 
         template<class Iter> requires std::input_iterator<Iter>
@@ -208,16 +208,16 @@ namespace Ubpa {
 
         reference back() noexcept {
             assert(!empty());
-            return *(data() + size_ - 1);
+            return *(data() + m_size - 1);
         }
 
         const_reference back() const noexcept {
             assert(!empty());
-            return *(data() + size_ - 1);
+            return *(data() + m_size - 1);
         }
 
-        pointer data() noexcept { return reinterpret_cast<pointer>(&storage_); }
-        const_pointer data() const noexcept { return reinterpret_cast<const_pointer>(&storage_); }
+        pointer data() noexcept { return reinterpret_cast<pointer>(&m_storage); }
+        const_pointer data() const noexcept { return reinterpret_cast<const_pointer>(&m_storage); }
 
         //
         // Iterators
@@ -227,8 +227,8 @@ namespace Ubpa {
         const_iterator begin() const noexcept { return data(); }
         const_iterator cbegin() const noexcept { return begin(); }
 
-        iterator end() noexcept { return data() + size_; }
-        const_iterator end() const noexcept { return data() + size_; }
+        iterator end() noexcept { return data() + m_size; }
+        const_iterator end() const noexcept { return data() + m_size; }
         const_iterator cend() const noexcept { return end(); }
 
         reverse_iterator rbegin() noexcept { return reverse_iterator{ end() }; }
@@ -243,9 +243,9 @@ namespace Ubpa {
         // Capacity
         /////////////
 
-        bool empty() const noexcept { return size_ == 0; }
+        bool empty() const noexcept { return m_size == 0; }
 
-        size_type size() const noexcept { return size_; }
+        size_type size() const noexcept { return m_size; }
 
         size_type max_size() const noexcept { return N; }
 
@@ -260,7 +260,7 @@ namespace Ubpa {
                 for(value_type& elem : *this)
                     elem.~value_type();
             }
-            size_ = 0;
+            m_size = 0;
         }
 
         iterator insert(const_iterator pos, const value_type& value) {
@@ -311,7 +311,7 @@ namespace Ubpa {
 
             std::uninitialized_fill(posptr, posptr + count, value);
 
-            size_ += count;
+            m_size += count;
 
             return posptr;
         }
@@ -360,7 +360,7 @@ namespace Ubpa {
             // 4. copy ctor at pos
             new(posptr)value_type{ std::forward<Args>(args)... };
 
-            ++size_;
+            ++m_size;
 
             return posptr;
         }
@@ -373,7 +373,7 @@ namespace Ubpa {
             std::move(posptr + 1, mylast, posptr);
             if constexpr (!std::is_trivially_destructible_v<value_type>)
                 (mylast - 1)->~value_type();
-            size_--;
+            m_size--;
             return posptr;
         }
 
@@ -389,7 +389,7 @@ namespace Ubpa {
             if (affected_elements > 0) {
                 const pointer newlast = std::move(lastptr, mylast, firstptr);
                 std::destroy(newlast, mylast);
-                size_ -= affected_elements;
+                m_size -= affected_elements;
             }
 
             return firstptr;
@@ -397,22 +397,22 @@ namespace Ubpa {
 
         void push_back(const value_type& value) {
             assert(size() < max_size());
-            new(data() + size_)value_type{ value };
-            ++size_;
+            new(data() + m_size)value_type{ value };
+            ++m_size;
         }
 
         void push_back(T&& value) {
             assert(size() < max_size());
-            new(data() + size_)value_type{ std::move(value) };
-            ++size_;
+            new(data() + m_size)value_type{ std::move(value) };
+            ++m_size;
         }
 
         template<typename... Args>
         reference emplace_back(Args&&... args) {
             assert(size() < max_size());
-            pointer addr = data() + size_;
+            pointer addr = data() + m_size;
             new(addr)value_type{ std::forward<Args>(args)... };
-            ++size_;
+            ++m_size;
             return *addr;
         }
 
@@ -420,29 +420,29 @@ namespace Ubpa {
             assert(!empty());
             if constexpr (!std::is_trivially_destructible_v<value_type>)
                 back().~value_type();
-            --size_;
+            --m_size;
         }
 
         void resize(size_type count) {
             assert(count < max_size());
 
-            if (count > size_)
+            if (count > m_size)
                 std::uninitialized_default_construct(end(), begin() + count);
             else
                 std::destroy(begin() + count, end());
 
-            size_ = count;
+            m_size = count;
         }
 
         void resize(size_type count, const T& value) {
             assert(count < max_size());
 
-            if (count > size_)
+            if (count > m_size)
                 std::uninitialized_fill(end(), begin() + count, value);
             else
                 std::destroy(begin() + count, end());
 
-            size_ = count;
+            m_size = count;
         }
 
     private:
@@ -456,7 +456,7 @@ namespace Ubpa {
         template<typename Iter> requires std::input_iterator<Iter>
         static_vector(Iter first, Iter last, std::forward_iterator_tag) {
             auto mylast = std::uninitialized_copy(first, last, begin());
-            size_ = conver_size(static_cast<size_t>(mylast - begin()));
+            m_size = conver_size(static_cast<size_t>(mylast - begin()));
         }
 
         template <class Iter>
@@ -471,7 +471,7 @@ namespace Ubpa {
 
             // Trim.
             std::destroy(cursor, mylast);
-            size_ = cursor - myfirst;
+            m_size = cursor - myfirst;
 
             // Append.
             for (; first != last; ++first)
@@ -485,9 +485,9 @@ namespace Ubpa {
             const pointer myfirst = begin();
             const pointer mylast = end();
 
-            if (newsize > size_) {
+            if (newsize > m_size) {
                 // performance note: traversing [first, _Mid) twice
-                const Iter mid = std::next(first, static_cast<difference_type>(size_));
+                const Iter mid = std::next(first, static_cast<difference_type>(m_size));
                 std::copy(first, mid, myfirst);
                 std::uninitialized_copy(mid, last, mylast);
             }
@@ -497,7 +497,7 @@ namespace Ubpa {
                 std::destroy(newlast, mylast);
             }
 
-            size_ = newsize;
+            m_size = newsize;
         }
 
         template<typename Iter>
@@ -509,12 +509,12 @@ namespace Ubpa {
 
             pointer myfirst = begin();
             const auto whereoff = static_cast<size_type>(pos - myfirst);
-            const auto oldsize = size_;
+            const auto oldsize = m_size;
 
             for (; first != last; ++first) {
                 emplace_back(*first);
-                assert(size_ < max_size());
-                ++size_;
+                assert(m_size < max_size());
+                ++m_size;
             }
 
             std::rotate(myfirst + whereoff, myfirst + oldsize, end());
@@ -533,7 +533,7 @@ namespace Ubpa {
             const pointer posptr = const_cast<pointer>(pos);
             const auto count = conver_size(static_cast<size_t>(std::distance(first, last)));
 
-            assert(count + size_ <= N);
+            assert(count + m_size <= N);
             assert(begin() <= pos && pos <= end());
 
             const pointer oldlast = end();
@@ -570,11 +570,11 @@ namespace Ubpa {
                 std::uninitialized_copy(first, last, posptr);
             }
 
-            size_ += count;
+            m_size += count;
         }
 
-        std::aligned_storage_t<sizeof(T)* N, alignof(T)> storage_;
-        size_type size_;
+        std::aligned_storage_t<sizeof(T)* N, alignof(T)> m_storage;
+        size_type m_size;
     };
 
     template<typename T, std::size_t N>
