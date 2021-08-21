@@ -4,6 +4,8 @@
 
 Ubpa small flat containers based on C++20
 
+!!! These containers aren't `AllocatorAwareContainer`.
+
 ## Containers
 
 - [`basic_flat_map`](include/USmallFlat/basic_flat_map.hpp)
